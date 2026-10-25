@@ -31,6 +31,22 @@ fn command_args(input: &Path, output: &Path) -> Vec<OsString> {
 }
 
 #[test]
+fn public_reexports_retain_paths_comments_and_explicit_prelude_mode() {
+    let input = sources(
+        "facade.qli",
+        "//! Facade\n#![no_implicit_prelude]\n//! Explicit lookup\n/// Public gate\npub use std::gate::{x,z};\nuse std::state::init0;",
+    );
+    let rendered = render_files(&input, false).unwrap();
+    let text = page(&rendered, "modules/facade.md");
+    assert!(text.contains("Implicit prelude: disabled."));
+    for name in ["x", "z"] {
+        assert!(text.contains(&format!("{name} (public reexport)")));
+        assert!(text.contains(&format!("pub use std::gate::{name};")));
+    }
+    assert!(text.contains("Public gate") && text.contains("Explicit lookup"));
+    assert!(!text.contains("init0") && !text.contains("No visible declarations."));
+}
+#[test]
 fn output_paths_accept_both_forms_and_reject_missing_or_repeated_values() {
     let (_temp, root) = canonical_temp();
     let input = root.join("sources with spaces");
@@ -91,30 +107,90 @@ fn public_default_and_private_option_preserve_all_module_pages() {
 fn signatures_retain_static_parameters_constraints_and_meaning_bindings() {
     let input = sources(
         "api.qli",
-        "pub meaning M:Bit=permutation_by(flip);\npub unitary fn apply[static U:Op<Bit,M>](q:Q<Bit>)->Q<Bit> requires Apply(U), Adjoint(U), Controlled(U) {U(q)}\npub basis fn flip(b:Bit)->Bit{not b}",
+        "pub meaning M:Bit=permutation_by(flip);\npub unitary fn apply[const U:Op<Bit,M>](q:Q<Bit>)->Q<Bit> requires Applicable(U), Adjointable(U), Controllable(U) {U(q)}\npub classical fn flip(b:Bit)->Bit{not b}",
     );
     let output = render_files(&input, false).unwrap();
     let text = page(&output, "modules/api.md");
     assert!(text.contains("pub meaning M:Bit=permutation_by(flip);"));
-    assert!(text.contains("[static U:Op<Bit,M>]"));
-    assert!(text.contains("requires Apply(U), Adjoint(U), Controlled(U)"));
+    assert!(text.contains("[const U:Op<Bit,M>]"));
+    assert!(text.contains("requires Applicable(U), Adjointable(U), Controllable(U)"));
     assert!(!text.contains("{U(q)}"));
-    assert!(text.contains("pub basis fn flip(b:Bit)->Bit\n```"));
+    assert!(text.contains("pub classical fn flip(b:Bit)->Bit\n```"));
 }
 
 #[test]
 fn every_declaration_kind_and_signature_comment_is_documented() {
     let input = sources(
         "kinds.qli",
-        "pub meaning P:Bit=phase_by(phase);\npub basis fn phase(b:Bit)->Bit /* { comment } */ {b}\npub iso fn isometry(q:Q<Bit>)->Q<Bit>{q}\npub unitary fn unit(q:Q<Bit>)->Q<Bit>{q}\npub observe fn measurement(q:Q<Bit>)->CBit{true}",
+        "pub meaning P:Bit=phase_by(phase);\npub classical fn phase(b:Bit)->Bit /* { comment } */ {b}\npub isometry fn preparation(q:Q<Bit>)->Q<Bit>{q}\npub unitary fn unit(q:Q<Bit>)->Q<Bit>{q}\npub observe fn measurement(q:Q<Bit>)->Bit{1}",
     );
     let output = render_files(&input, false).unwrap();
     let text = page(&output, "modules/kinds.md");
-    for name in ["P", "phase", "isometry", "unit", "measurement"] {
+    for name in ["P", "phase", "preparation", "unit", "measurement"] {
         assert!(text.contains(&format!("## {name} (public)")));
     }
-    assert!(text.contains("pub basis fn phase(b:Bit)->Bit /* { comment } */\n```"));
-    assert!(!text.contains("{true}"));
+    assert!(text.contains("pub classical fn phase(b:Bit)->Bit /* { comment } */\n```"));
+    assert!(!text.contains("{1}"));
+}
+
+#[test]
+fn quantum_match_bodies_remain_outside_syntax_only_function_signatures() {
+    let input = sources(
+        "control.qli",
+        "/// Selector notes.\npub unitary fn select(s:Q<Bits<2>>,q:Q<Bit>)->(Q<Bits<2>>,Q<Bit>){qmatch(s,q){3=>third,0=>zero,2=>second,1=>first}}",
+    );
+    let output = render_files(&input, false).unwrap();
+    let text = page(&output, "modules/control.md");
+    assert!(text.contains("Selector notes."));
+    assert!(text.contains("pub unitary fn select(s:Q<Bits<2>>,q:Q<Bit>)->(Q<Bits<2>>,Q<Bit>)\n```"));
+    assert!(!text.contains("qmatch"));
+    assert!(!text.contains("third"));
+}
+
+#[test]
+fn nominal_type_docs_preserve_member_order_and_public_visibility() {
+    let input = sources(
+        "types.qli",
+        "/// Choice notes.\npub enum Choice {\n/// Third notes.\nThird,\n/// First notes.\nFirst, Second }\n/// Record notes.\npub struct Record {\n/// Visible notes.\npub visible: Choice,\n/// Secret notes.\nhidden: Unit }\n/// Hidden type notes.\nstruct Hidden { pub field: Bit }\npub struct Empty {}",
+    );
+    let public = render_files(&input, false).unwrap();
+    let text = page(&public, "modules/types.md");
+    assert!(text.contains("## Choice (public)"));
+    assert!(text.contains("pub enum Choice\n```"));
+    assert!(text.contains("Choice notes."));
+    assert!(text.contains("Third notes.") && text.contains("First notes."));
+    assert!(text.find("### Third (variant)").unwrap() < text.find("### First (variant)").unwrap());
+    assert!(text.find("### First (variant)").unwrap() < text.find("### Second (variant)").unwrap());
+    assert!(text.contains("pub struct Record\n```"));
+    assert!(text.contains("pub visible: Choice\n```"));
+    assert!(text.contains("Visible notes."));
+    assert!(text.contains("Private fields are omitted."));
+    assert!(!text.contains("hidden") && !text.contains("Secret notes."));
+    assert!(!text.contains("Hidden"));
+    assert!(text.contains("## Empty (public)"));
+    assert!(!text.contains("No visible declarations."));
+    let all = render_files(&input, true).unwrap();
+    let text = page(&all, "modules/types.md");
+    assert!(text.contains("### hidden (private field)"));
+    assert!(text.contains("hidden: Unit\n```") && text.contains("Secret notes."));
+    assert!(text.contains("## Hidden (private)") && text.contains("Hidden type notes."));
+    assert!(!text.contains("Private fields are omitted."));
+    assert_eq!(render_files(&input, true).unwrap(), all);
+}
+
+#[test]
+fn nominal_member_fences_and_inner_docs_use_original_source_spans() {
+    let input = sources(
+        "fences.qli",
+        "pub struct R {\r\n/*! Inner type notes. */\r\n/// Member notes.\r\npub value: /* ```` retained */ Bits<2>, private_value: Unit }",
+    );
+    let output = render_files(&input, false).unwrap();
+    let text = page(&output, "modules/fences.md");
+    assert!(text.contains("Inner type notes."));
+    assert!(text.contains("Member notes."));
+    assert!(text.contains("`````qli\npub value: /* ```` retained */ Bits<2>\n`````"));
+    assert!(!text.contains("private_value"));
+    assert!(!text.contains('\r'));
 }
 
 #[test]
@@ -430,7 +506,7 @@ fn cli_is_one_json_envelope_with_portable_relative_paths_and_usage_exit_codes() 
     assert!(version.status.success());
     let version: Value = serde_json::from_slice(&version.stdout).unwrap();
     assert_eq!(version["result"]["version"], "0.1.9");
-    assert_eq!(version["result"]["qleisli_version"], "0.2.1");
+    assert_eq!(version["result"]["qleisli_version"], "0.3.0-beta");
     for args in [
         vec!["--format=json"],
         vec!["", "--format=json"],

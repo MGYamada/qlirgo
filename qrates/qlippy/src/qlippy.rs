@@ -5,8 +5,9 @@ use std::ffi::OsString;
 use std::path::PathBuf;
 
 use qleisli::frontend::ast::{
-    BasisExpr, BasisExprKind, Block, Decl, Expr, ExprKind, FnBody, Ident, Pattern, PatternKind,
-    Span, StaticOp, StaticOpKind, StmtKind,
+    AxisSelection, BasisExpr, BasisExprKind, Block, Count, Decl, Expr, ExprKind, FnBody, Ident,
+    Module, NatKind, Natural, Pattern, PatternKind, Predicate, QuantumLabel, Requirement, Span,
+    StaticOp, StaticOpKind, StaticParamKind, StmtKind, Type, TypeDeclKind, TypeKind,
 };
 use qleisli::frontend::project::{ModuleOrigin, Project};
 use serde_json::json;
@@ -14,7 +15,7 @@ use serde_json::json;
 use crate::adapter;
 use crate::report::{Diagnostic, Location, Report, coordinates, tool_info};
 use crate::rules::{self, DOUBLE_INVERSE, REDUNDANT_REPEAT_ONE, UNUSED_IMPORT};
-use crate::snapshot::FrozenSources;
+use crate::snapshot::{Files, FrozenSources};
 
 const FORMAT: &str = "qlippy.result";
 const HELP: &str = "qlippy <source-root> [--format=json] [--deny-warnings]\nqlippy --list-rules [--format=json]\nqlippy --version [--format=json]\nqlippy --help [--format=json]\n\nCheck frozen Qleisli sources before emitting advisory lint diagnostics.\nNo source rewriting or mathematical evidence is produced.";
@@ -110,21 +111,25 @@ pub fn run(args: &[OsString]) -> Report {
     let Some(root) = options.source_root else {
         return usage("A source root is required.");
     };
-    let sources = match FrozenSources::capture(&root) {
-        Ok(sources) => sources,
+    let input = match adapter::CapturedCheckInput::capture(&root) {
+        Ok(input) => input,
         Err(diagnostic) => return Report::fail(FORMAT, "lint", diagnostic, 1),
     };
-    analyze(&sources, options.deny_warnings)
+    analyze(
+        input.sources(),
+        input.configuration(),
+        options.deny_warnings,
+    )
 }
 
-fn analyze(sources: &FrozenSources, deny_warnings: bool) -> Report {
+fn analyze(sources: &FrozenSources, configuration: &Files, deny_warnings: bool) -> Report {
     let tool = match tool_info("qlippy", super::VERSION) {
         Ok(tool) => tool,
         Err(diagnostic) => return Report::fail(FORMAT, "lint", diagnostic, 1),
     };
-    let checked = match adapter::check(sources) {
+    let checked = match adapter::check(sources, configuration) {
         Ok(checked) => checked,
-        Err(diagnostic) if diagnostic.category != "compiler" => {
+        Err(diagnostic) if diagnostic.category != "compiler" || sources.count() == 0 => {
             return Report::fail(FORMAT, "lint", diagnostic, 1);
         }
         Err(diagnostic) => {
@@ -187,10 +192,12 @@ fn lint_project(project: &Project, sources: &FrozenSources) -> Result<Vec<Diagno
             ));
         }
         let mut visitor = Visitor::default();
-        for decl in &module.ast.decls {
-            visitor.decl(decl);
-        }
+        visitor.module(&module.ast);
         for import in &module.ast.uses {
+            // A public reexport may be used externally even without a local call.
+            if import.public {
+                continue;
+            }
             let Some(name) = import.path.last() else {
                 continue;
             };
@@ -285,25 +292,108 @@ impl Visitor {
         self.names.insert(name.text.clone());
     }
 
+    fn module(&mut self, module: &Module) {
+        for decl in &module.type_decls {
+            if let TypeDeclKind::Record { fields } = &decl.kind {
+                for field in fields {
+                    self.ty(&field.ty);
+                }
+            }
+        }
+        for decl in &module.decls {
+            self.decl(decl);
+        }
+    }
+
     fn decl(&mut self, decl: &Decl) {
         // Binder names deliberately count as possible use under shadowing.
         for parameter in &decl.static_params {
             self.name(&parameter.name);
-            if let Some(meaning) = &parameter.meaning {
-                self.name(meaning);
+            match &parameter.kind {
+                StaticParamKind::Natural | StaticParamKind::Basis => {}
+                StaticParamKind::Operation {
+                    basis,
+                    codomain,
+                    meaning,
+                } => {
+                    self.ty(basis);
+                    if let Some(codomain) = codomain {
+                        self.ty(codomain);
+                    }
+                    if let Some(meaning) = meaning {
+                        self.name(meaning);
+                    }
+                }
             }
         }
         for requirement in &decl.requires {
-            self.name(&requirement.name);
+            match requirement {
+                Requirement::Access(constraint) => self.name(&constraint.name),
+                Requirement::Predicate(predicate) => self.predicate(predicate),
+            }
         }
         for parameter in &decl.params {
             self.pattern(&parameter.pattern);
+            self.ty(&parameter.ty);
         }
+        if let Some(domain) = &decl.meaning_domain {
+            self.ty(domain);
+        }
+        self.ty(&decl.return_type);
         match &decl.body {
-            FnBody::Meaning { function, .. } => self.name(function),
+            FnBody::Natural(natural) => self.natural(natural),
+            FnBody::Meaning { function, .. } | FnBody::MeaningReference { function } => {
+                self.name(function);
+            }
+            FnBody::MeaningCompose { first, second } => {
+                self.name(first);
+                self.name(second);
+            }
+            FnBody::MeaningTensor { left, right } => {
+                self.name(left);
+                self.name(right);
+            }
             FnBody::Basis(expression) => self.basis(expression),
             FnBody::Quantum(block) => self.block(block),
         }
+    }
+
+    fn ty(&mut self, ty: &Type) {
+        match &ty.kind {
+            TypeKind::Unit | TypeKind::Bit => {}
+            TypeKind::Bits(size) => self.natural(size),
+            TypeKind::Named(name) => self.name(name),
+            TypeKind::Q(basis) => self.ty(basis),
+            TypeKind::Tuple(items) => {
+                for item in items {
+                    self.ty(item);
+                }
+            }
+        }
+    }
+
+    fn natural(&mut self, natural: &Natural) {
+        match &natural.kind {
+            NatKind::Number(_) => {}
+            NatKind::Name(name) => {
+                self.names.insert(name.clone());
+            }
+            NatKind::Call { callee, arguments } => {
+                self.name(callee);
+                for argument in arguments {
+                    self.natural(argument);
+                }
+            }
+            NatKind::Add(left, right) | NatKind::Sub(left, right) | NatKind::Mul(left, right) => {
+                self.natural(left);
+                self.natural(right);
+            }
+        }
+    }
+
+    fn predicate(&mut self, predicate: &Predicate) {
+        self.natural(&predicate.left);
+        self.natural(&predicate.right);
     }
 
     fn pattern(&mut self, pattern: &Pattern) {
@@ -321,8 +411,16 @@ impl Visitor {
     fn block(&mut self, block: &Block) {
         for statement in &block.statements {
             match &statement.kind {
-                StmtKind::Let { pattern, value } => {
+                StmtKind::StaticLet { name, value } => {
+                    self.name(name);
+                    self.natural(value);
+                }
+                StmtKind::Let { pattern, value } | StmtKind::MutableLet { pattern, value, .. } => {
                     self.pattern(pattern);
+                    self.expr(value);
+                }
+                StmtKind::Assign { target, value } => {
+                    self.name(target);
                     self.expr(value);
                 }
                 StmtKind::Expr(expression) => self.expr(expression),
@@ -333,6 +431,21 @@ impl Visitor {
 
     fn basis(&mut self, expression: &BasisExpr) {
         match &expression.kind {
+            BasisExprKind::Match(selection) => {
+                self.basis(&selection.scrutinee);
+                for arm in &selection.arms {
+                    self.name(&arm.label.type_name);
+                    self.basis(&arm.body);
+                }
+            }
+            BasisExprKind::Variant(value) => self.name(&value.type_name),
+            BasisExprKind::Record(record) => {
+                self.name(&record.type_name);
+                for field in &record.fields {
+                    self.basis(&field.value);
+                }
+            }
+            BasisExprKind::Field { receiver, .. } => self.basis(receiver),
             BasisExprKind::Name(name) => self.name(name),
             BasisExprKind::Bit(_) | BasisExprKind::Unit => {}
             BasisExprKind::Tuple(items) => {
@@ -357,6 +470,14 @@ impl Visitor {
     fn static_op(&mut self, operation: &StaticOp) {
         match &operation.kind {
             StaticOpKind::Name(name) => self.name(name),
+            StaticOpKind::Type(ty) => self.ty(ty),
+            StaticOpKind::Natural(natural) => self.natural(natural),
+            StaticOpKind::Specialize { name, arguments } => {
+                self.name(name);
+                for argument in arguments {
+                    self.static_op(argument);
+                }
+            }
             StaticOpKind::Bind {
                 implementation,
                 meaning,
@@ -375,11 +496,15 @@ impl Visitor {
             }
             StaticOpKind::Controlled(inner) => self.static_op(inner),
             StaticOpKind::Repeat(count, inner) => {
-                if *count == 1 {
+                // Preserve the literal-one rule; do not evaluate natural formulas.
+                if matches!(count, Count::Natural(natural) if natural.kind == NatKind::Number(1)) {
                     self.findings.push(Finding {
                         id: REDUNDANT_REPEAT_ONE.id,
                         span: operation.span,
                     });
+                }
+                match count {
+                    Count::Natural(natural) | Count::Power(natural) => self.natural(natural),
                 }
                 self.static_op(inner);
             }
@@ -394,6 +519,53 @@ impl Visitor {
 
     fn expr(&mut self, expression: &Expr) {
         match &expression.kind {
+            ExprKind::Match(selection) => {
+                self.expr(&selection.scrutinee);
+                for arm in &selection.arms {
+                    self.name(&arm.label.type_name);
+                    self.block(&arm.body);
+                }
+            }
+            ExprKind::Variant(value) => self.name(&value.type_name),
+            ExprKind::Record(record) => {
+                self.name(&record.type_name);
+                for field in &record.fields {
+                    self.expr(&field.value);
+                }
+            }
+            ExprKind::Field { receiver, .. } => self.expr(receiver),
+            ExprKind::UnsupportedClosure(closure) => {
+                for parameter in &closure.parameters {
+                    self.pattern(parameter);
+                }
+                self.block(&closure.body);
+            }
+            ExprKind::AccessCall {
+                callee,
+                static_args,
+                args,
+            } => {
+                self.name(callee);
+                for argument in static_args {
+                    self.static_op(argument);
+                }
+                for argument in args {
+                    self.expr(&argument.value);
+                    if let Some(selection) = &argument.selection {
+                        match selection {
+                            AxisSelection::Index(index) => self.natural(index),
+                            AxisSelection::Range { start, end } => {
+                                self.natural(start);
+                                self.natural(end);
+                            }
+                        }
+                    }
+                }
+            }
+            ExprKind::ApplyStatic { operation, input } | ExprKind::Adjoint { operation, input } => {
+                self.static_op(operation);
+                self.expr(input);
+            }
             ExprKind::ApplyContract {
                 implementation,
                 specification,
@@ -401,10 +573,6 @@ impl Visitor {
             } => {
                 self.name(implementation);
                 self.name(specification);
-                self.expr(input);
-            }
-            ExprKind::Adjoint { function, input } => {
-                self.name(function);
                 self.expr(input);
             }
             ExprKind::RepeatStatic {
@@ -421,6 +589,16 @@ impl Visitor {
                 self.name(function);
                 self.expr(input);
             }
+            ExprKind::QuantumMatch(selection) => {
+                self.expr(&selection.selector);
+                self.expr(&selection.target);
+                for arm in &selection.arms {
+                    if let QuantumLabel::Variant(value) = &arm.label {
+                        self.name(&value.type_name);
+                    }
+                    self.name(&arm.operation);
+                }
+            }
             ExprKind::QuantumIf {
                 control,
                 target,
@@ -432,8 +610,39 @@ impl Visitor {
                 self.name(zero);
                 self.name(one);
             }
+            ExprKind::Controlled { operation, args } => {
+                self.static_op(operation);
+                for argument in args {
+                    self.expr(argument);
+                }
+            }
+            ExprKind::StaticIf {
+                predicate,
+                then_branch,
+                else_branch,
+            } => {
+                self.predicate(predicate);
+                self.block(then_branch);
+                self.block(else_branch);
+            }
+            ExprKind::StaticFold {
+                index,
+                start,
+                end,
+                carry,
+                initial,
+                body,
+                ..
+            } => {
+                self.name(index);
+                self.natural(start);
+                self.natural(end);
+                self.pattern(carry);
+                self.expr(initial);
+                self.block(body);
+            }
             ExprKind::Name(name) => self.name(name),
-            ExprKind::CBit(_) | ExprKind::Unit => {}
+            ExprKind::Bit(_) | ExprKind::Unit => {}
             ExprKind::Tuple(items) => {
                 for item in items {
                     self.expr(item);
@@ -513,11 +722,17 @@ mod tests {
     #[test]
     fn frozen_sources_remain_bound_after_the_original_changes() {
         let root = tempfile::tempdir().unwrap();
-        let source = "use std::quantum::x; unitary fn identity(q:Q<Bit>)->Q<Bit>{q}";
+        let source = "use std::gate::x; unitary fn identity(q:Q<Bit>)->Q<Bit>{q}";
         std::fs::write(root.path().join("module.qli"), source).unwrap();
-        let frozen = FrozenSources::capture(root.path()).unwrap();
+        std::fs::write(
+            root.path().join("Qargo.toml"),
+            "schema-version=2\n[qrate]\nedition=\"2026\"\n",
+        )
+        .unwrap();
+        let input = adapter::CapturedCheckInput::capture(root.path()).unwrap();
+        let frozen = input.sources();
         std::fs::write(root.path().join("module.qli"), "invalid source").unwrap();
-        let report = analyze(&frozen, false);
+        let report = analyze(frozen, input.configuration(), false);
         assert_eq!(report.exit_code, 0);
         assert_eq!(report.envelope.diagnostics[0].id, "unused_import");
         assert_eq!(
@@ -538,10 +753,188 @@ mod tests {
     #[test]
     fn a_frozen_empty_input_skips_the_compiler() {
         let source = FrozenSources::from_files(Files::new()).unwrap();
-        let report = analyze(&source, true);
+        let report = analyze(&source, &Files::new(), true);
         assert_eq!(report.exit_code, 0);
         let result = report.envelope.result.as_ref().unwrap();
         assert_eq!(result["source_count"], 0);
         assert_eq!(result["qleisli_check"]["status"], "not_run");
+    }
+
+    #[test]
+    fn an_empty_input_with_invalid_explicit_configuration_is_not_a_source_check() {
+        let source = FrozenSources::from_files(Files::new()).unwrap();
+        let configuration = Files::from([(
+            "Qargo.toml".to_owned(),
+            b"schema-version=2\n[qrate]\nedition='2027'\n".to_vec(),
+        )]);
+        let report = analyze(&source, &configuration, false);
+        assert_eq!(report.exit_code, 1);
+        assert_eq!(report.envelope.version, 1);
+        assert!(report.envelope.result.is_none());
+        assert_eq!(report.envelope.diagnostics.len(), 1);
+        assert_eq!(report.envelope.diagnostics[0].category, "compiler");
+        assert!(report.envelope.diagnostics[0].primary.is_none());
+        assert!(report.envelope.diagnostics[0].message.contains("2027"));
+    }
+
+    // These parser/visitor tests check lexical coverage, not Qleisli acceptance.
+    #[test]
+    fn nominal_forms_visit_references_without_counting_member_labels() {
+        let source = r#"struct Shape { pub member_only: FieldType, hidden_field: Bits<field_width> }
+enum Local { VariantOnly, Other }
+classical fn basis_value() -> Unit {
+    match basis_input {
+        BasisArm::Left => BasisRecord { member_only: basis_call(BasisValue::Only) }.member_only,
+        BasisArm::Right => basis_fallback
+    }
+}
+fn runtime_value() -> Unit {
+    let record = RuntimeRecord { member_only: RuntimeValue::Only };
+    match record.member_only {
+        RuntimeArm::Left => { power(operation, 1)(runtime_input) },
+        RuntimeArm::Right => { runtime_call(runtime_fallback) }
+    }
+}
+"#;
+        let syntax = qleisli::frontend::parser::parse_module(source).unwrap();
+        let mut visitor = Visitor::default();
+        visitor.module(&syntax);
+        for name in "FieldType field_width basis_input BasisArm BasisRecord basis_call BasisValue basis_fallback RuntimeRecord RuntimeValue RuntimeArm operation runtime_input runtime_call runtime_fallback".split_whitespace() {
+            assert!(visitor.names.contains(name), "missing possible use: {name}");
+        }
+        for member in [
+            "member_only",
+            "hidden_field",
+            "VariantOnly",
+            "Other",
+            "Left",
+            "Right",
+            "Only",
+        ] {
+            assert!(
+                !visitor.names.contains(member),
+                "member is not an import use: {member}"
+            );
+        }
+        let findings: Vec<_> = visitor
+            .findings
+            .iter()
+            .map(|finding| (finding.id, &source[finding.span.start..finding.span.end]))
+            .collect();
+        assert_eq!(findings, [(REDUNDANT_REPEAT_ONE.id, "power(operation, 1)")]);
+    }
+
+    #[test]
+    fn quantum_match_visits_both_inputs_all_labels_and_operations() {
+        let source = r#"fn nominal() -> Unit {
+    qmatch(select(selector_input), power(target_op, 1)(target_input)) {
+        EnumOnly::Third => third,
+        alias::Choice::First => other::first,
+        EnumOnly::Second => second
+    }
+}
+fn ordinals() -> Unit { qmatch(ordinal_selector, ordinal_target) { 3 => d, 0 => a, 2 => c, 1 => b } }
+"#;
+        let syntax = qleisli::frontend::parser::parse_module(source).unwrap();
+        let mut visitor = Visitor::default();
+        visitor.module(&syntax);
+        for name in "select selector_input target_op target_input EnumOnly alias::Choice third other::first second ordinal_selector ordinal_target a b c d".split_whitespace() {
+            assert!(visitor.names.contains(name), "missing possible use: {name}");
+        }
+        for label in ["Third", "First", "Second", "0", "1", "2", "3"] {
+            assert!(!visitor.names.contains(label));
+        }
+        assert_eq!(visitor.findings.len(), 1);
+        assert_eq!(visitor.findings[0].id, REDUNDANT_REPEAT_ONE.id);
+        assert_eq!(
+            &source[visitor.findings[0].span.start..visitor.findings[0].span.end],
+            "power(target_op, 1)"
+        );
+    }
+
+    #[test]
+    fn current_declaration_forms_keep_possible_import_uses() {
+        let source = r#"static fn size[const n: Nat]() -> Nat { dimension[n]() + offset - adjustment * factor }
+classical fn label(q: Bit) -> Bit { flip(q) }
+meaning reference_target: Bit = reference(reference_op);
+meaning composition_target: Bit = compose(first, second);
+meaning tensor_target: (Bit, Bit) = tensor(left, right);
+meaning phase_target: Unit = phase_by(phase_body);
+fn typed[const B: Basis, const U: Op<B -> Bits<width>, specification>, const n: Nat](q: Q<Bits<input_width>>) -> Q<Bits<output_width>> requires Applicable(U), Adjointable(U), Controllable(U), n >= threshold { q }
+"#;
+        let syntax = qleisli::frontend::parser::parse_module(source).unwrap();
+        let mut visitor = Visitor::default();
+        for decl in &syntax.decls {
+            visitor.decl(decl);
+        }
+        for name in "n dimension offset adjustment factor flip reference_op first second left right phase_body B U width specification input_width output_width threshold".split_whitespace() {
+            assert!(visitor.names.contains(name), "missing possible use: {name}");
+        }
+        assert!(!visitor.names.contains("unused"));
+        assert!(visitor.findings.is_empty());
+    }
+
+    #[test]
+    fn current_operation_forms_keep_names_and_complete_constructor_spans() {
+        let source = r#"// λ
+fn expressions(q: Q<Bit>) -> Q<Bit> {
+    static let local = dimension[extent]();
+    let a = invoke[type(Bits<arity>), specialized[extent], then_op(first_op, second_op), tensor_op(left_op, right_op), conjugate_op(before_op, after_op), checked_op(implementation, specification), 1 + increment](q);
+    let b = invoke[adjoint(adjoint(operation))](adjoint(single_operation)(a));
+    let c = power(repeatable, 1)(b);
+    let d = power(repeatable, 2^exponent)(c);
+    let e = controlled(controlled(operation))(control, d);
+    let f = visit[selector](excl e[index], ctrl other[begin..end]);
+    if static check_limit > ceiling {
+        for static i in floor..upper carry value = f { yield value }
+    } else {
+        qfor static j in floor..upper carry other_value = fallback { yield other_value }
+    }
+}
+"#;
+        let syntax = qleisli::frontend::parser::parse_module(source).unwrap();
+        let mut visitor = Visitor::default();
+        visitor.decl(&syntax.decls[0]);
+        for name in "local dimension extent invoke arity specialized first_op second_op left_op right_op before_op after_op implementation specification increment operation single_operation repeatable exponent control visit selector index other begin end check_limit ceiling i j floor upper value other_value fallback".split_whitespace() {
+            assert!(visitor.names.contains(name), "missing possible use: {name}");
+        }
+        let findings: Vec<_> = visitor
+            .findings
+            .iter()
+            .map(|finding| (finding.id, &source[finding.span.start..finding.span.end]))
+            .collect();
+        assert_eq!(
+            findings,
+            [
+                (DOUBLE_INVERSE.id, "adjoint(adjoint(operation))"),
+                (REDUNDANT_REPEAT_ONE.id, "power(repeatable, 1)"),
+            ]
+        );
+        // A natural expression or exponent is not evaluated by the literal-one lint.
+        let nonliteral =
+            "fn f(q: Q<Bit>) -> Q<Bit> { let a = power(op, 1 + 0)(q); power(op, 2^0)(a) }";
+        let syntax = qleisli::frontend::parser::parse_module(nonliteral).unwrap();
+        let mut visitor = Visitor::default();
+        visitor.decl(&syntax.decls[0]);
+        assert!(visitor.findings.is_empty());
+    }
+
+    #[test]
+    fn retained_diagnostic_syntax_is_traversed_without_becoming_accepted() {
+        let source = r#"fn diagnostic() -> Unit {
+    let mut shadow = first;
+    shadow = replacement;
+    let closure = |captured| { captured and external };
+    ()
+}
+"#;
+        let syntax = qleisli::frontend::parser::parse_module(source).unwrap();
+        let mut visitor = Visitor::default();
+        visitor.decl(&syntax.decls[0]);
+        for name in "shadow first replacement closure captured external".split_whitespace() {
+            assert!(visitor.names.contains(name), "missing lexical name: {name}");
+        }
+        assert!(visitor.findings.is_empty());
+        // analyze still requires ordinary checker success before invoking this visitor.
     }
 }

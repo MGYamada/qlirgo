@@ -6,7 +6,7 @@ use std::ffi::OsString;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use qleisli::frontend::ast::{Decl, FnBody};
+use qleisli::frontend::ast::{Decl, FnBody, TypeDecl, TypeDeclKind};
 use qleisli::frontend::documentation::DocComment;
 use qleisli::frontend::lexer::{Token, TokenKind, lex};
 use qleisli::frontend::parser::parse_documented_module;
@@ -223,9 +223,12 @@ fn render_comments(output: &mut String, comments: &[DocComment]) {
 
 fn render_signature(output: &mut String, source: &str, decl: &Decl, tokens: &[Token]) {
     let end = match &decl.body {
-        FnBody::Meaning { .. } => decl.span.end,
+        FnBody::Meaning { .. }
+        | FnBody::MeaningReference { .. }
+        | FnBody::MeaningCompose { .. }
+        | FnBody::MeaningTensor { .. } => decl.span.end,
         FnBody::Quantum(block) => block.span.start,
-        FnBody::Basis(_) => tokens
+        FnBody::Natural(_) | FnBody::Basis(_) => tokens
             .iter()
             .find(|token| {
                 token.span.start >= decl.return_type.span.end
@@ -234,9 +237,11 @@ fn render_signature(output: &mut String, source: &str, decl: &Decl, tokens: &[To
             })
             .map_or(decl.return_type.span.end, |token| token.span.start),
     };
-    let signature = source[decl.span.start..end]
-        .trim_end()
-        .replace("\r\n", "\n");
+    render_source(output, &source[decl.span.start..end]);
+}
+
+fn render_source(output: &mut String, source: &str) {
+    let signature = source.trim_end().replace("\r\n", "\n");
     let longest = signature
         .split(|ch| ch != '`')
         .map(str::len)
@@ -244,6 +249,52 @@ fn render_signature(output: &mut String, source: &str, decl: &Decl, tokens: &[To
         .unwrap_or(0);
     let fence = "`".repeat(3.max(longest + 1));
     output.push_str(&format!("{fence}qli\n{signature}\n{fence}\n\n"));
+}
+
+fn render_type(
+    output: &mut String,
+    source: &str,
+    decl: &TypeDecl,
+    docs: &[DocComment],
+    member_docs: &[Vec<DocComment>],
+    include_private: bool,
+) {
+    output.push_str(&format!(
+        "## {} ({})\n\n",
+        markdown_text(&decl.name.text),
+        if decl.public { "public" } else { "private" }
+    ));
+    render_source(output, &source[decl.span.start..decl.body_span.start]);
+    render_comments(output, docs);
+    match &decl.kind {
+        TypeDeclKind::Enum { variants } => {
+            for (variant, docs) in variants.iter().zip(member_docs) {
+                output.push_str(&format!(
+                    "### {} (variant)\n\n",
+                    markdown_text(&variant.text)
+                ));
+                render_source(output, &source[variant.span.start..variant.span.end]);
+                render_comments(output, docs);
+            }
+        }
+        TypeDeclKind::Record { fields } => {
+            for (field, docs) in fields.iter().zip(member_docs) {
+                if !field.public && !include_private {
+                    continue;
+                }
+                output.push_str(&format!(
+                    "### {} ({} field)\n\n",
+                    markdown_text(&field.name.text),
+                    if field.public { "public" } else { "private" }
+                ));
+                render_source(output, &source[field.span.start..field.span.end]);
+                render_comments(output, docs);
+            }
+            if !include_private && fields.iter().any(|field| !field.public) {
+                output.push_str("Private fields are omitted.\n\n");
+            }
+        }
+    }
 }
 
 /// Render deterministic Markdown from source syntax, including an index for empty inputs.
@@ -282,6 +333,41 @@ pub fn render_files(files: &Files, include_private: bool) -> Result<Files, Diagn
         let mut page = format!("# Module {}\n\n{DISCLAIMER}", markdown_text(&module));
         render_comments(&mut page, &documented.module_docs);
         let mut visible = 0;
+        if documented.syntax.no_implicit_prelude {
+            page.push_str("Implicit prelude: disabled.\n\n");
+        }
+        for (usage, docs) in documented.syntax.uses.iter().zip(&documented.import_docs) {
+            if !usage.public {
+                continue;
+            }
+            let name = usage.path.last().expect("parsed public import");
+            let path = usage
+                .path
+                .iter()
+                .map(|part| part.text.as_str())
+                .collect::<Vec<_>>()
+                .join("::");
+            visible += 1;
+            page.push_str(&format!(
+                "## {} (public reexport)\n\n```qli\npub use {path};\n```\n\n",
+                markdown_text(&name.text)
+            ));
+            render_comments(&mut page, docs);
+        }
+        for (index, decl) in documented.syntax.type_decls.iter().enumerate() {
+            if !decl.public && !include_private {
+                continue;
+            }
+            visible += 1;
+            render_type(
+                &mut page,
+                source,
+                decl,
+                &documented.type_declaration_docs[index],
+                &documented.type_member_docs[index],
+                include_private,
+            );
+        }
         for (decl, docs) in documented
             .syntax
             .decls
@@ -406,5 +492,49 @@ fn publication_error(error: qlippy_engine::support::publication::PublicationErro
             "Existing documentation artifacts are inconsistent; nothing was overwritten.",
         ),
         error => output_error(error.to_string()),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn current_body_forms_render_original_signatures_without_evaluation() {
+        let source = r#"pub static fn width[const n: Nat]() -> Nat { n + 1 }
+pub classical fn flip(x: Bit) -> Bit { not x }
+pub meaning original: Bit = permutation_by(flip);
+pub meaning reference_target: Bit = reference(provider);
+pub meaning composition_target: Bit = compose(original, reference_target);
+pub meaning tensor_target: (Bit, Bit) = tensor(original, reference_target);
+fn hidden(q: Q<Bit>) -> Q<Bit> { q }
+"#
+        .replace('\n', "\r\n");
+        let files = Files::from([("module.qli".into(), source.into_bytes())]);
+        let pages = render_files(&files, false).unwrap();
+        let page = std::str::from_utf8(&pages["modules/module.md"]).unwrap();
+        for signature in [
+            "pub static fn width[const n: Nat]() -> Nat",
+            "pub classical fn flip(x: Bit) -> Bit",
+            "pub meaning original: Bit = permutation_by(flip);",
+            "pub meaning reference_target: Bit = reference(provider);",
+            "pub meaning composition_target: Bit = compose(original, reference_target);",
+            "pub meaning tensor_target: (Bit, Bit) = tensor(original, reference_target);",
+        ] {
+            assert!(
+                page.contains(&format!("```qli\n{signature}\n```")),
+                "{signature}"
+            );
+        }
+        assert!(page.contains(DISCLAIMER));
+        assert!(!page.contains("{ n + 1 }"));
+        assert!(!page.contains("{ not x }"));
+        assert!(!page.contains("hidden"));
+        assert!(!page.contains('\r'));
+        let all = render_files(&files, true).unwrap();
+        let all_page = std::str::from_utf8(&all["modules/module.md"]).unwrap();
+        assert!(all_page.contains("## hidden (private)"));
+        assert!(all_page.contains("```qli\nfn hidden(q: Q<Bit>) -> Q<Bit>\n```"));
+        // provider is intentionally unresolved: rendering is syntax-only.
     }
 }
