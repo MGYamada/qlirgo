@@ -135,11 +135,62 @@ to their existing bound result; build-record version 2 carries the same metadata
 Parent lint adds only `source_configuration_id: Hash` to its existing result.
 The existing envelope/diagnostic/tool fields are in the [specification](specification.md).
 
+## Nominal and coherent-match syntax compatibility
+
+The compatibility migration covers the linked nominal runtime/basis AST
+variants and `QuantumMatch`/`QuantumLabel`, preserving qlippy's three existing
+advisory rules. It visits field types, constructor/match type references, child
+expressions and every coherent arm operation; member labels alone do not count
+as import uses. Ordinary checking still precedes advisory linting.
+
+qlifmt preserves written field/arm order and the new type/member documentation
+attachments. qlidoc includes nominal type headers and visible member excerpts,
+with the existing private-items option controlling private declarations/fields.
+Neither syntax tool establishes nominal transport, coherent control access or
+source preservation. Public schemas, dependency/product versions and the qargo
+module index's existing function categories are unchanged.
+
+The added regression tests cover parser/visitor traversal, existing lint
+spans, syntax-only formatting/idempotence, type/member comments and visibility,
+and exclusion of `qmatch` function bodies from generated signatures. The local
+2026-10-25 checks below exercise this migration. Passing these tests does not
+enable nominal source execution or add a qlippy rule.
+
 ## Validation status
 
 [Retained development observations](../tests/fixtures/qleisli-beta-compat/index.json)
 preserve first sources, actual failures and the recorded local source windows.
 The compressed archive is inert history, not an acceptance or execution API.
+
+A separate 2026-10-25 local checkpoint checks nominal/qmatch compatibility
+using an explicit local Qleisli `=0.3.0-beta` source override, frozen offline
+locks, normal Rust 1.99.1 and MSRV 1.85.0. Each toolchain passes 182 bundle
+tests and 63 qlippy, 19 qlifmt and 24 qlidoc tests through the independent
+development manifests, with no ignored tests. Strict all-target Clippy,
+warning-free Rustdoc and the doctest commands pass for all four manifests.
+
+These are composed observations. The first five of 44 planned stages passed;
+the initial Clippy stage then failed resolving the unpublished beta with the
+local override before the subcommand. With the same recorded source, locks and
+tools, placing that explicit override after the subcommand
+allowed the remaining 39 stages to pass. The failed attempt remains failed;
+this is not a continuous 44-stage pass or registry-resolution evidence.
+
+After that matrix, a separate normal bundle build selected all four artifacts
+from one Cargo invocation. The previous files were preserved before installing
+`qargo`, `qlippy`, `qlifmt` and `qlidoc` under the Qleisli repository's root
+`bin/`. The developer runtime verifier passed using those installed paths and
+the explicitly intended Qleisli/std sources and native checker. Following the
+native keyword repair, the same installed binaries separately passed that
+runtime verifier with the selected rebuilt checker. The later run does not
+retroactively change the earlier matrix's checker identity.
+
+These checks reuse Cargo artifacts and bind their recorded source windows;
+they are not clean-build, isolated-extraction, binary/source or release
+attestations. The local override does not clear the hosted dependency-fetch
+gate for the unpublished beta. Registry availability, complete extraction,
+package/native installation and supported-host release checks remain open,
+as does [Qleisli #171](https://github.com/MGYamada/Qleisli/issues/171).
 
 The recorded local source windows pass normal Rust 1.98.1 coverage of 172 tests
 (composed from a full run and the two affected targets) and one complete MSRV

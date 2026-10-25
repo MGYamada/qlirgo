@@ -134,7 +134,7 @@ fn space_before(previous: Option<&TokenKind>, current: &TokenKind) -> bool {
         return false;
     };
     if matches!(current, LParen) {
-        return matches!(previous, If | Qif);
+        return matches!(previous, If | Qif | Qmatch);
     }
     !matches!(previous, LParen | LBracket | LAngle | DoubleColon)
 }
@@ -281,6 +281,18 @@ fn same_documentation(original: &DocumentedModule, formatted: &DocumentedModule)
             .iter()
             .zip(&formatted.import_docs)
             .all(|(a, b)| docs(a) == docs(b))
+        && original.type_declaration_docs.len() == formatted.type_declaration_docs.len()
+        && original
+            .type_declaration_docs
+            .iter()
+            .zip(&formatted.type_declaration_docs)
+            .all(|(a, b)| docs(a) == docs(b))
+        && original.type_member_docs.len() == formatted.type_member_docs.len()
+        && original
+            .type_member_docs
+            .iter()
+            .zip(&formatted.type_member_docs)
+            .all(|(a, b)| a.len() == b.len() && a.iter().zip(b).all(|(a, b)| docs(a) == docs(b)))
 }
 
 /// Reject filename, syntax, spelling, comment or documentation attachment changes.

@@ -2,6 +2,11 @@
 
 ## Linked Qleisli migration — development draft
 
+- Adapt existing lint traversal, syntax formatting and documentation to nominal
+  expressions and `qmatch`, preserving member documentation, visibility and arm
+  order without adding lint rules or changing versions or schemas. Local
+  normal/MSRV and installed bundle checks pass in recorded source windows;
+  registry, extraction, package and release validation remain pending.
 - Specify the authorized exact Qleisli `=0.3.0-beta` compatibility migration and current AST spellings, preserving the existing three advisory lint rules and syntax-only formatter/documentation boundary.
 - Bind the actual linked std descriptor and normalized captured source configuration separately from source/qrate identities. Version only parent qargo result/build records to 2; child schemas stay 1.
 - Require explicit nonempty native selection without fallback; valid empty inputs make no native call, invalid configuration fails without fallback, and observed native metadata grants no source/target proof.
