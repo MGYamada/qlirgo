@@ -596,7 +596,7 @@ impl Visitor {
                     if let QuantumLabel::Variant(value) = &arm.label {
                         self.name(&value.type_name);
                     }
-                    self.name(&arm.operation);
+                    self.static_op(&arm.operation);
                 }
             }
             ExprKind::QuantumIf {

@@ -54,6 +54,21 @@ fn public_reexports_are_not_suggested_for_unused_import_removal() {
     assert!(warnings(&report).is_empty());
 }
 #[test]
+fn qmatch_retains_imports_in_named_and_composed_arms() {
+    let source = "#![no_implicit_prelude]
+        use gates::{plain, first, second};
+        unitary fn apply(s:Q<Bit>,q:Q<Bit>)->(Q<Bit>,Q<Bit>){
+            qmatch(s,q){0=>plain,1=>then_op(first,second)}
+        }";
+    let gates = "#![no_implicit_prelude]
+        pub unitary fn plain(q:Q<Bit>)->Q<Bit>{q}
+        pub unitary fn first(q:Q<Bit>)->Q<Bit>{h(q)}
+        pub unitary fn second(q:Q<Bit>)->Q<Bit>{h(q)}";
+    let report = lint(&[("main.qli", source), ("gates.qli", gates)], false);
+    assert!(warnings(&report).is_empty());
+}
+
+#[test]
 fn rule_catalog_is_machine_readable_and_independent_of_checking() {
     let root = root(&[("invalid.qli", "this is not Qleisli")]);
     let output = Command::new(env!("CARGO_BIN_EXE_qlippy"))
