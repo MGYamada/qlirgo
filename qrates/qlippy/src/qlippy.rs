@@ -445,7 +445,9 @@ impl Visitor {
                     self.basis(&field.value);
                 }
             }
-            BasisExprKind::Field { receiver, .. } => self.basis(receiver),
+            BasisExprKind::Field { receiver, .. } | BasisExprKind::BitIndex { receiver, .. } => {
+                self.basis(receiver);
+            }
             BasisExprKind::Name(name) => self.name(name),
             BasisExprKind::Bit(_) | BasisExprKind::Unit => {}
             BasisExprKind::Tuple(items) => {
@@ -684,20 +686,35 @@ impl Visitor {
                 self.expr(input);
                 self.basis(basis);
             }
+            ExprKind::Workspace(scope) => {
+                self.expr(&scope.data);
+                if let Some(dirty) = &scope.dirty {
+                    self.expr(dirty);
+                }
+                self.name(&scope.logical);
+                self.name(&scope.data_binder);
+                self.name(&scope.scratch_binder);
+                self.block(&scope.body);
+            }
             ExprKind::WithComputed {
                 source,
                 function,
+                static_args,
                 binder,
                 body,
             } => {
                 self.expr(source);
                 self.name(function);
+                for argument in static_args {
+                    self.static_op(argument);
+                }
                 self.name(binder);
                 self.block(body);
             }
             ExprKind::CertifiedComputed {
                 source,
                 function,
+                static_args,
                 logical,
                 data_binder,
                 ancilla_binder,
@@ -705,6 +722,9 @@ impl Visitor {
             } => {
                 self.expr(source);
                 self.name(function);
+                for argument in static_args {
+                    self.static_op(argument);
+                }
                 self.name(logical);
                 self.name(data_binder);
                 self.name(ancilla_binder);
@@ -822,6 +842,37 @@ fn runtime_value() -> Unit {
             .map(|finding| (finding.id, &source[finding.span.start..finding.span.end]))
             .collect();
         assert_eq!(findings, [(REDUNDANT_REPEAT_ONE.id, "power(operation, 1)")]);
+    }
+
+    #[test]
+    fn bit_index_and_scoped_forms_keep_possible_import_uses() {
+        let source = r#"classical fn bit() -> Bit { basis_receiver[0] }
+fn computed() -> Unit { with_computed(source, predicate[predicate_width]) { |flag| flag } }
+fn certified() -> Unit {
+    with_computed(source, equation[type(Bits<equation_width>)], logical) { |data, scratch| (data, scratch) }
+}
+fn workspace() -> Unit {
+    let prepared = clean(workspace_input, clean_logical) { |state, work| clean_body(state, work) };
+    dirty(prepared, incoming_scratch, dirty_logical) { |owner, auxiliary| dirty_body(owner, auxiliary) }
+}
+"#;
+        let syntax = qleisli::frontend::parser::parse_module(source).unwrap();
+        let mut visitor = Visitor::default();
+        visitor.module(&syntax);
+        for name in [
+            "basis_receiver",
+            "predicate_width",
+            "equation_width",
+            "workspace_input",
+            "clean_logical",
+            "clean_body",
+            "incoming_scratch",
+            "dirty_logical",
+            "dirty_body",
+        ] {
+            assert!(visitor.names.contains(name), "missing possible use: {name}");
+        }
+        assert!(visitor.findings.is_empty());
     }
 
     #[test]
