@@ -5,9 +5,10 @@ use std::ffi::OsString;
 use std::path::PathBuf;
 
 use qleisli::frontend::ast::{
-    AxisSelection, BasisExpr, BasisExprKind, Block, Count, Decl, Expr, ExprKind, FnBody, Ident,
-    Module, NatKind, Natural, Pattern, PatternKind, Predicate, QuantumLabel, Requirement, Span,
-    StaticOp, StaticOpKind, StaticParamKind, StmtKind, Type, TypeDeclKind, TypeKind,
+    AxisSelection, BasisExpr, BasisExprKind, Block, CoherentArm, Count, Decl, Expr, ExprKind,
+    FnBody, Ident, Module, NatKind, Natural, Pattern, PatternKind, Predicate, QuantumLabel,
+    Requirement, Span, StaticOp, StaticOpKind, StaticParamKind, StmtKind, Type, TypeDeclKind,
+    TypeKind,
 };
 use qleisli::frontend::project::{ModuleOrigin, Project};
 use serde_json::json;
@@ -288,6 +289,13 @@ struct Visitor {
 }
 
 impl Visitor {
+    fn coherent_arm(&mut self, arm: &CoherentArm) {
+        match arm {
+            CoherentArm::Operation(operation) => self.static_op(operation),
+            CoherentArm::Block(block) => self.block(block),
+        }
+    }
+
     fn name(&mut self, name: &Ident) {
         self.names.insert(name.text.clone());
     }
@@ -553,7 +561,7 @@ impl Visitor {
                 }
                 for argument in args {
                     self.expr(&argument.value);
-                    if let Some(selection) = &argument.selection {
+                    if let Some(selection) = argument.selection() {
                         match selection {
                             AxisSelection::Index(index) => self.natural(index),
                             AxisSelection::Range { start, end } => {
@@ -598,7 +606,7 @@ impl Visitor {
                     if let QuantumLabel::Variant(value) = &arm.label {
                         self.name(&value.type_name);
                     }
-                    self.static_op(&arm.operation);
+                    self.coherent_arm(&arm.body);
                 }
             }
             ExprKind::QuantumIf {
@@ -609,8 +617,8 @@ impl Visitor {
             } => {
                 self.expr(control);
                 self.expr(target);
-                self.name(zero);
-                self.name(one);
+                self.coherent_arm(zero);
+                self.coherent_arm(one);
             }
             ExprKind::Controlled { operation, args } => {
                 self.static_op(operation);
