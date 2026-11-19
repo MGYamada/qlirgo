@@ -80,6 +80,8 @@ root = "docs"
 
 Names use ASCII letters/digits, hyphens and underscores, beginning with a letter. Versions are nonnegative canonical decimal MAJOR.MINOR.PATCH. Every valid manifest must explicitly include `edition = "2026"` under `[qrate]`. The edition is a TOML string, and `"2026"` is the only supported Qleisli edition. Omission has no default and is an `invalid_manifest` error; numeric/date/boolean/array values are also invalid. Other strings produce `unsupported_edition`. Qrate operations validate the edition before processing sources or invoking tools, including for empty roots. The captured raw manifest binds the edition to the input identity and build snapshot. The Rust implementation uses its own explicit Cargo edition `"2024"`.
 
+The edition selects the Qleisli constitutional regime independently of the compiler release and source grammar. A toolchain update does not edit the manifest or select a new edition for the qrate.
+
 To migrate a schema-1 manifest, set `schema-version = 2` and add `edition = "2026"` under `[qrate]`. Unsupported schema versions produce `unsupported_manifest_version` with this migration suggestion; the parent result envelope is version 2 and child envelopes remain version 1. All valid manifest examples and fixtures must include the edition, and future editions must receive explicit support before they can be accepted.
 
 Explicit --manifest-path takes precedence; otherwise search current and ancestor directories for Qargo.toml. A malformed found manifest is an error, never grounds for continuing upward.
