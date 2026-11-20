@@ -220,7 +220,12 @@ fn nested_manifest_pairs_are_checked_before_any_tool_execution() {
         format!("{MANIFEST}# mismatch"),
     )
     .unwrap();
-    managed(root.path(), "lint", &["--qlinties", "/nonexistent-child"], 1);
+    managed(
+        root.path(),
+        "lint",
+        &["--qlinties", "/nonexistent-child"],
+        1,
+    );
     let value = standalone(&root.path().join("src"), 1);
     assert_eq!(value["diagnostics"][0]["id"], "manifest_conflict");
     assert!(!root.path().join("target").exists());

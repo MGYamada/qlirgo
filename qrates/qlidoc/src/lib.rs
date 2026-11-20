@@ -465,8 +465,12 @@ fn reject_input_overlap(input: &Path, output: &Path) -> Result<(), Diagnostic> {
 
 /// Atomically publish a complete output directory, reusing only byte-identical artifacts.
 pub fn publish(output: &Path, files: &Files) -> Result<(), Diagnostic> {
-    qlinties_engine::support::publication::publish(output, files, &std::collections::BTreeSet::new())
-        .map_err(publication_error)
+    qlinties_engine::support::publication::publish(
+        output,
+        files,
+        &std::collections::BTreeSet::new(),
+    )
+    .map_err(publication_error)
 }
 
 /// Publish below the retained qrate directory, never a replacement at its old path.

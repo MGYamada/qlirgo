@@ -142,7 +142,9 @@ fn quantum_match_bodies_remain_outside_syntax_only_function_signatures() {
     let output = render_files(&input, false).unwrap();
     let text = page(&output, "modules/control.md");
     assert!(text.contains("Selector notes."));
-    assert!(text.contains("pub unitary fn select(s:Q<Bits<2>>,q:Q<Bit>)->(Q<Bits<2>>,Q<Bit>)\n```"));
+    assert!(
+        text.contains("pub unitary fn select(s:Q<Bits<2>>,q:Q<Bit>)->(Q<Bits<2>>,Q<Bit>)\n```")
+    );
     assert!(!text.contains("qmatch"));
     assert!(!text.contains("third"));
 }

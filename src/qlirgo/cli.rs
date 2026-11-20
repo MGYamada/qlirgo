@@ -56,7 +56,8 @@ pub(super) fn parse(args: &[OsString]) -> Result<Request, Diagnostic> {
             if options.qlinties.is_some() {
                 return Err(usage("--qlinties requires one nonempty path."));
             }
-            options.qlinties = Some(path_argument("--qlinties", arg, &mut remaining).map_err(usage)?);
+            options.qlinties =
+                Some(path_argument("--qlinties", arg, &mut remaining).map_err(usage)?);
         } else if arg == "--qlifmt" || arg.starts_with("--qlifmt=") {
             if options.qlifmt.is_some() {
                 return Err(usage("--qlifmt requires one nonempty path."));

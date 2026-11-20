@@ -42,7 +42,10 @@ fn warnings(report: &Report) -> &[Diagnostic] {
         assert!(diagnostic.suggestion.is_some());
         let policy = qlinties_engine::rules::find(&diagnostic.id).expect("catalogued lint rule");
         assert_eq!(diagnostic.severity, policy.default_severity);
-        assert_eq!(policy.promotion, qlinties_engine::rules::Promotion::Advisory);
+        assert_eq!(
+            policy.promotion,
+            qlinties_engine::rules::Promotion::Advisory
+        );
     }
     &report.envelope.diagnostics
 }
