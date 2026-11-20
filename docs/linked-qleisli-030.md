@@ -1,7 +1,7 @@
 # Historical linked Qleisli beta development contract
 
 The following pre-rename contract and retained source-window observations are
-historical and preserved verbatim. Current qlirgo/qlinty names, configuration
+historical and preserved verbatim. Current qlirgo/qlinties names, configuration
 normalization and the transitional manifests are specified in
 [naming migration](naming-migration.md). The exact beta dependency, semantic
 checking boundary and recorded historical evidence are unchanged.

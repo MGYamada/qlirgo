@@ -23,7 +23,7 @@ Actual repository creation and publication are separate future operations.
 - Each component's `Cargo.toml` owns its Rust package identity, version,
   dependencies, targets, and Rust edition. Neither manifest inherits from the
   other, and shared sources do not implicitly require matching versions.
-- Qlinty, qlifmt, and qlidoc are three independent, ordinary qrates. Their qrate
+- Qlinties, qlifmt, and qlidoc are three independent, ordinary qrates. Their qrate
   and Rust release versions remain aligned with qlirgo for bundle convenience;
   alignment grants no privileged qrate status.
 - Only `std` is privileged; it is bundled with and versioned alongside Qleisli.
@@ -48,7 +48,7 @@ changing its version or establishing a change to its Qleisli interface.
 2. Register component-owned CLI and integration-test targets. Canonical engines,
    CLI sources, and tests must not depend on the root `qlirgo_tools` facade. Thin
    root adapters reuse those sources for the public bundle.
-3. Keep shared support in qlinty. Qlifmt and qlidoc explicitly depend on it in
+3. Keep shared support in qlinties. Qlifmt and qlidoc explicitly depend on it in
    Cargo through the internal support surface defined below. Extraction includes
    its exact source/build configuration snapshot and records version and content
    identity, without reaching into the original checkout or introducing qlirgo
@@ -63,13 +63,13 @@ changing its version or establishing a change to its Qleisli interface.
 
 ## Shared support, adapters, and dependency direction
 
-Keep shared-library ownership in qlinty while separating it logically from the
-qlinty linter product. Audit the support API independently of the linter's CLI
+Keep shared-library ownership in qlinties while separating it logically from the
+qlinties linter product. Audit the support API independently of the linter's CLI
 and rule implementation. Qlifmt and qlidoc may consume capture/snapshot,
 diagnostic/transport, identity, syntax, executable, and publication support.
 They may not consume lint rules, catalogs, severity/promotion policies, lint
 entry points, CLI defaults, or product-version globals. Shared checker support
-remains available to qlirgo and qlinty; formatting/documentation remain
+remains available to qlirgo and qlinties; formatting/documentation remain
 syntax-only and must not acquire a checker or lint acceptance gate.
 
 Support APIs accept each caller's identity and policy explicitly. A linter

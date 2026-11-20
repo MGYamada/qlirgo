@@ -45,7 +45,7 @@ mod envelope_tests {
             assert_eq!(report.envelope.version, 2);
         }
         assert_eq!(
-            Report::ok("qlinty.result", "help", serde_json::json!({}))
+            Report::ok("qlinties.result", "help", serde_json::json!({}))
                 .envelope
                 .version,
             1

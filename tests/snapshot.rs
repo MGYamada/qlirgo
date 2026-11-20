@@ -1,2 +1,2 @@
-use qlirgo_tools as qlinty_engine;
-include!("../qrates/qlinty/tests/snapshot.rs");
+use qlirgo_tools as qlinties_engine;
+include!("../qrates/qlinties/tests/snapshot.rs");

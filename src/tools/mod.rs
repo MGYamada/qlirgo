@@ -66,7 +66,7 @@ pub(crate) fn lint(
 ) -> Result<Report, Diagnostic> {
     // Configuration failures on empty inputs precede source checking. Reject
     // them here without asking a child for an impossible count-zero failed
-    // checking result under the unchanged qlinty schema.
+    // checking result under the unchanged qlinties schema.
     if sources.count() == 0 {
         crate::adapter::check(sources, configuration)?;
     }
@@ -76,7 +76,7 @@ pub(crate) fn lint(
         Vec::new()
     };
     execute_with_configuration(
-        "qlinty",
+        "qlinties",
         explicit,
         sources,
         &args,
@@ -128,7 +128,7 @@ mod configuration_tests {
         let diagnostic = lint(
             &sources,
             &configuration,
-            Some(Path::new("/nonexistent/qlinty-not-selected")),
+            Some(Path::new("/nonexistent/qlinties-not-selected")),
             false,
             &orchestrator,
         )

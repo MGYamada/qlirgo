@@ -5,7 +5,7 @@ Status: adopted design policy as of 0.1.2, applied to 0.1.9. Future dependency, 
 ## Curated standard library first
 
 The [qrate boundary policy](../QRATEBOUNDARY.md) applies equally to internal and
-external qrates. qlinty, qlifmt, and qlidoc are three ordinary independent qrates
+external qrates. qlinties, qlifmt, and qlidoc are three ordinary independent qrates
 whose versions align with qlirgo for distribution convenience. This alignment
 grants no privilege. Each qrate's Rust environment must be separable with it;
 the [extraction plan](qrate-extraction-plan.md) describes the pending work.

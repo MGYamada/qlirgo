@@ -6,9 +6,9 @@ mod formatter;
 use std::ffi::OsString;
 use std::path::PathBuf;
 
-use qlinty_engine::support::report::{Diagnostic, Report, tool_info};
-use qlinty_engine::support::snapshot::digest_files;
-use qlinty_engine::support::source::{capture_source, syntax_step};
+use qlinties_engine::support::report::{Diagnostic, Report, tool_info};
+use qlinties_engine::support::snapshot::digest_files;
+use qlinties_engine::support::source::{capture_source, syntax_step};
 use serde_json::json;
 
 pub use apply::{ApplyFailure, apply_captured, apply_files};

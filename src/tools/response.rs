@@ -188,29 +188,29 @@ pub(super) fn lint_response(
     deny: bool,
 ) -> Result<Envelope, Diagnostic> {
     let _: Response<Option<LintResult>> = serde_json::from_slice(bytes).map_err(|_| {
-        transport("qlinty returned repeated fields, unsupported fields or invalid field types.")
+        transport("qlinties returned repeated fields, unsupported fields or invalid field types.")
     })?;
     let value: Value = serde_json::from_slice(bytes)
-        .map_err(|_| transport("qlinty did not emit a complete JSON response."))?;
+        .map_err(|_| transport("qlinties did not emit a complete JSON response."))?;
     if !closed_object(&value, ENVELOPE_FIELDS)
-        || value["format"] != "qlinty.result"
+        || value["format"] != "qlinties.result"
         || value["version"] != 1
         || value["command"] != "lint"
         || !["ok", "error"].contains(&value["outcome"].as_str().unwrap_or(""))
     {
         return Err(transport(
-            "qlinty returned an unsupported or malformed envelope.",
+            "qlinties returned an unsupported or malformed envelope.",
         ));
     }
     let Some(diagnostics) = value["diagnostics"].as_array() else {
-        return Err(transport("qlinty diagnostics must be an array."));
+        return Err(transport("qlinties diagnostics must be an array."));
     };
     for diagnostic in diagnostics {
         if !closed_object(diagnostic, DIAGNOSTIC_FIELDS)
             || !diagnostic["message"].is_string()
             || !(diagnostic["suggestion"].is_null() || diagnostic["suggestion"].is_string())
         {
-            return Err(transport("qlinty returned a malformed diagnostic."));
+            return Err(transport("qlinties returned a malformed diagnostic."));
         }
         let category = diagnostic["category"].as_str().unwrap_or("");
         let id = diagnostic["id"].as_str().unwrap_or("");
@@ -218,7 +218,7 @@ pub(super) fn lint_response(
         if category == "lint" {
             if crate::rules::find(id).is_none() || severity != "warning" {
                 return Err(transport(
-                    "qlinty returned an unknown lint rule or severity.",
+                    "qlinties returned an unknown lint rule or severity.",
                 ));
             }
         } else if category != "compiler"
@@ -242,19 +242,19 @@ pub(super) fn lint_response(
             || severity != "error"
         {
             return Err(transport(
-                "qlinty returned an unexpected diagnostic category.",
+                "qlinties returned an unexpected diagnostic category.",
             ));
         }
         if !location_valid(&diagnostic["primary"], sources, category == "compiler") {
             return Err(transport(
-                "qlinty diagnostic locations do not match the captured source bytes.",
+                "qlinties diagnostic locations do not match the captured source bytes.",
             ));
         }
     }
     let result = &value["result"];
     if result.is_null() {
         return Err(transport(
-            "qlinty omitted the captured source and tool identity binding.",
+            "qlinties omitted the captured source and tool identity binding.",
         ));
     }
     if !closed_object(
@@ -265,13 +265,13 @@ pub(super) fn lint_response(
         || !step_valid(&result["qleisli_check"], sources.count())
     {
         return Err(transport(
-            "qlinty results are not bound to the captured sources.",
+            "qlinties results are not bound to the captured sources.",
         ));
     }
     let tool = &result["tool"];
-    if !tool_matches(tool, "qlinty", digest) {
+    if !tool_matches(tool, "qlinties", digest) {
         return Err(transport(
-            "qlinty tool identity or profile is incompatible.",
+            "qlinties tool identity or profile is incompatible.",
         ));
     }
     let errors = diagnostics
@@ -291,11 +291,11 @@ pub(super) fn lint_response(
         || (result["qleisli_check"]["status"] == "failed" && (!errors || warnings))
     {
         return Err(transport(
-            "qlinty exit status, outcome and diagnostics are inconsistent.",
+            "qlinties exit status, outcome and diagnostics are inconsistent.",
         ));
     }
     serde_json::from_value(value)
-        .map_err(|_| transport("qlinty returned malformed typed diagnostics."))
+        .map_err(|_| transport("qlinties returned malformed typed diagnostics."))
 }
 
 pub(super) fn redact(envelope: &mut Envelope, paths: &[&Path]) {
@@ -349,7 +349,7 @@ pub(super) fn syntax_response<R: DeserializeOwned + Serialize>(
     if !closed_object(result, fields)
         || result["source_count"].as_u64() != Some(sources.count() as u64)
         || result["source_id"] != sources.source_id()
-        || result["qleisli_check"] != qlinty_engine::source::syntax_step(sources.count())
+        || result["qleisli_check"] != qlinties_engine::source::syntax_step(sources.count())
     {
         return Err(transport(
             "Source tool did not bind its result to the captured inputs and syntax-only processing.",
@@ -408,9 +408,9 @@ mod tests {
         .unwrap();
         let warning = json!({"id":"unused_import","category":"lint","severity":"warning", "primary":{"path":"module.qli","start":0,"end":1,"line":1,"column":1},"message":"advice","suggestion":null});
         let compiler = json!({"id":"type_mismatch","category":"compiler","severity":"error","primary":null,"message":"rejected","suggestion":null});
-        let mut response = json!({"format":"qlinty.result","version":1,"command":"lint","outcome":"error","diagnostics":[warning],
+        let mut response = json!({"format":"qlinties.result","version":1,"command":"lint","outcome":"error","diagnostics":[warning],
             "result":{"source_count":1,"source_id":sources.source_id(),"qleisli_check":{"status":"failed","reason":"compiler_error"},
-            "tool":{"name":"qlinty","version":VERSION,"executable_sha256":"digest","qleisli_version":QLEISLI_VERSION,"profile":PROFILE}}});
+            "tool":{"name":"qlinties","version":VERSION,"executable_sha256":"digest","qleisli_version":QLEISLI_VERSION,"profile":PROFILE}}});
         assert!(
             lint_response(
                 &serde_json::to_vec(&response).unwrap(),
@@ -443,6 +443,12 @@ mod tests {
             )
             .is_ok()
         );
+        for legacy in ["qlinty.result", "qlippy.result"] {
+            let mut old = response.clone();
+            old["format"] = json!(legacy);
+            let bytes = serde_json::to_vec(&old).unwrap();
+            assert!(lint_response(&bytes, 1, &sources, "digest", true).is_err());
+        }
         for reason in [Value::Null, json!("other"), json!("no_sources"), json!(42)] {
             response["result"]["qleisli_check"]["reason"] = reason;
             assert!(

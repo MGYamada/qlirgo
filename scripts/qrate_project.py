@@ -12,7 +12,7 @@ import stat
 import subprocess
 import tomllib
 
-QRATES = ("qlinty", "qlifmt", "qlidoc")
+QRATES = ("qlinties", "qlifmt", "qlidoc")
 SUPPORT = ("manifest", "adapter", "executable", "publication", "report", "snapshot", "source")
 EXCLUDED = {"target", ".git", "__pycache__", ".DS_Store"}
 SCRIPTS = ("qrate_project.py", "verify_qrate.py", "capture_build.py")
@@ -43,7 +43,7 @@ def identity(domain, value):
 
 def closure(component):
     require(component in QRATES, "Unknown component: " + component)
-    return (component,) if component == "qlinty" else ("qlinty", component)
+    return (component,) if component == "qlinties" else ("qlinties", component)
 
 
 def entries(root):
@@ -143,8 +143,8 @@ def audit(root, components=QRATES, bundle=True):
                 if "path" in dep:
                     path = (development / dep["path"]).resolve()
                     contained(path)
-                    require(name != "qlinty" and path == (root / "rust/qlinty").resolve()
-                            and dep.get("package", alias) == "qlinty-engine",
+                    require(name != "qlinties" and path == (root / "rust/qlinties").resolve()
+                            and dep.get("package", alias) == "qlinties-engine",
                             "Unsupported local dependency direction")
         for target in [data["lib"], *data.get("bin", []), *data.get("test", []), *data.get("example", []), *data.get("bench", [])]:
             contained(development / target["path"])
@@ -158,15 +158,15 @@ def audit(root, components=QRATES, bundle=True):
             source = path.read_text()
             require(not re.search(r"\b(?:qlirgo_tools|qlirgo)\s*::", source), "Reverse source dependency: " + str(path))
             require("CARGO_MANIFEST_DIR" not in source, "Root-relative runtime fixture: " + str(path))
-            if name != "qlinty":
-                require(not re.search(r"\bqlinty_engine\b(?!::support::)", source),
+            if name != "qlinties":
+                require(not re.search(r"\bqlinties_engine\b(?!::support::)", source),
                         "Shared imports must use explicit support paths, without product aliases")
-                for reference in re.findall(r"qlinty_engine::([\w:]+)", source):
+                for reference in re.findall(r"qlinties_engine::([\w:]+)", source):
                     require(reference.startswith("support::"), "Product import outside shared support: " + reference)
                     module = reference.split("::")[1]
                     require(module in set(SUPPORT) - {"adapter"}, "Non-syntax dependency: " + reference)
-            if name == "qlinty" and (path.stem in SUPPORT or path.parent.name == "support"):
-                require(not re.search(r"(?:crate|super)::(?:qlinty|rules|VERSION)\b", source),
+            if name == "qlinties" and (path.stem in SUPPORT or path.parent.name == "support"):
+                require(not re.search(r"(?:crate|super)::(?:qlinties|rules|VERSION)\b", source),
                         "Support depends on a product layer: " + str(path))
                 require(not re.search(r"crate::(?!support::)\w", source), "Support escaped its namespace")
                 require(not re.search(r"(?:use\s+crate\b(?!::support::)|crate::\s*\{|super::super)", source),
@@ -175,15 +175,15 @@ def audit(root, components=QRATES, bundle=True):
                 contained(path.parent / literal)
     if bundle:
         for name in QRATES:
-            aliases = "use qlirgo_tools as qlinty_engine;\n"
-            if name != "qlinty":
+            aliases = "use qlirgo_tools as qlinties_engine;\n"
+            if name != "qlinties":
                 aliases += f"use qlirgo_tools::{name}_engine;\n"
             for label, inclusion in ((f"src/bin/{name}.rs", f"../../qrates/{name}/src/bin/{name}.rs"),
                                      (f"tests/{name}.rs", f"../qrates/{name}/tests/engine.rs")):
                 require((root / label).read_text() == aliases + f'include!("{inclusion}");\n',
                         "Bundle adapter must only alias and include canonical code: " + label)
         require((root / "tests/snapshot.rs").read_text()
-                == 'use qlirgo_tools as qlinty_engine;\ninclude!("../qrates/qlinty/tests/snapshot.rs");\n',
+                == 'use qlirgo_tools as qlinties_engine;\ninclude!("../qrates/qlinties/tests/snapshot.rs");\n',
                 "Snapshot adapter changed")
 
 

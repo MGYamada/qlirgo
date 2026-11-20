@@ -5,7 +5,7 @@
 - Preserve nominal member documentation, coherent match arm order, and lint traversal of arm operations and blocks.
 - Accept qrate prerelease versions such as 0.2.0-beta, 0.3.0-alpha and 1.0.0-rc.1 with SemVer prerelease identifier syntax. Preserve their exact bytes/identity/build metadata; reject empty identifiers and leading-zero numeric identifiers.
 
-- Rename the functional qargo/qlippy tools, Rust projects and public identities to qlirgo/qlinty. Keep qrate, qlifmt and qlidoc unchanged.
+- Rename the functional qargo/qlippy tools, Rust projects and public identities to qlirgo/qlinties. Keep qrate, qlifmt and qlidoc unchanged.
 - Prefer Qlirgo.toml, accept legacy Qargo.toml, and reject dual manifests unless their bytes match exactly. Bundle identical dual manifests during the Qleisli beta transition.
 - Preserve actual manifest names in input snapshots and normalize effective configuration independently. Adapt only private compiler stages to the beta loader's legacy name.
 - Declare the exact https://docs.rs/qlirgo/0.2.0-beta page in package metadata and verify it in packaged-source checks.

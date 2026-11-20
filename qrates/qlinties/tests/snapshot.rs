@@ -1,8 +1,8 @@
 use std::fs;
 
-use qlinty_engine::adapter;
-use qlinty_engine::report::coordinates;
-use qlinty_engine::snapshot::{Files, FrozenSources, collect_tree, digest_files, materialize};
+use qlinties_engine::adapter;
+use qlinties_engine::report::coordinates;
+use qlinties_engine::snapshot::{Files, FrozenSources, collect_tree, digest_files, materialize};
 
 fn configuration() -> Files {
     Files::from([(

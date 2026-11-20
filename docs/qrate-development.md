@@ -14,8 +14,8 @@ cargo clippy --frozen --all-targets -- -D warnings
 RUSTDOCFLAGS='-D warnings' cargo doc --frozen --no-deps
 ```
 
-Qlifmt and qlidoc have an exact local Rust dependency on qlinty's support. They
-import `qlinty_engine::support` without depending on lint rules, product defaults
+Qlifmt and qlidoc have an exact local Rust dependency on qlinties's support. They
+import `qlinties_engine::support` without depending on lint rules, product defaults
 or the ordinary checker. All three packages remain unpublished. The root bundle
 uses alias/include adapters for the same canonical CLI and test files.
 
@@ -31,7 +31,7 @@ python3 scripts/qrate_project.py --component qlifmt --destination /tmp/qlifmt-pr
 ```
 
 The destination must not exist. It receives the component's `qrates/` and `rust/`
-trees, the corresponding qlinty trees when required, all locked registry sources
+trees, the corresponding qlinties trees when required, all locked registry sources
 and checksums in `vendor/`, license notices, the boundary policy, these
 instructions, and the standalone verification scripts. There is no root qlirgo
 Cargo manifest. Relative source/dependency relationships are preserved. This
@@ -43,7 +43,7 @@ presence. Its framed SHA-256 identity excludes its own record, checkout paths,
 timestamps, caches, Git state and build outputs. Qrate inputs and this complete
 Rust project are separate artifacts. No qlirgo result schema is extended.
 
-The initial extraction supports the current explicit crates.io and local qlinty
+The initial extraction supports the current explicit crates.io and local qlinties
 dependency graph. Git dependencies and custom Cargo configuration fail until
 their capture contract is implemented. Supplied helpers/generated sources in
 the component's development or qrate trees enter the inventory. Project links,
@@ -84,7 +84,7 @@ The verifier neither builds/downloads a checker nor falls back to another one.
 
 Nonempty direct/embedded CLI comparison fixtures include real schema-2/edition-2026
 manifests. The unchanged identity and new one-qubit bare-H controls must pass actual
-qlinty source checking; syntax and absent-name faults must reach their compiler
+qlinties source checking; syntax and absent-name faults must reach their compiler
 diagnostics. The historical fixture label `type` remains an absent-name fault, not
 a claimed type-mismatch test. Empty fixtures keep their deliberate no-manifest
 control. Formatter/documentation comparisons remain syntax-only.

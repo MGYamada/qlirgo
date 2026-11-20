@@ -5,9 +5,9 @@ use std::path::Path;
 use qleisli::frontend::documentation::{DocComment, DocumentedModule};
 use qleisli::frontend::lexer::{TokenKind, lex};
 use qleisli::frontend::parser::parse_documented_module;
-use qlinty_engine::support::report::Diagnostic;
-use qlinty_engine::support::snapshot::{FILE_BYTES, Files, TOTAL_BYTES, portable_relative};
-use qlinty_engine::support::source::parse_diagnostic;
+use qlinties_engine::support::report::Diagnostic;
+use qlinties_engine::support::snapshot::{FILE_BYTES, Files, TOTAL_BYTES, portable_relative};
+use qlinties_engine::support::source::parse_diagnostic;
 
 use super::{error, source_text};
 

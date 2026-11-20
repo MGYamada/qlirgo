@@ -307,7 +307,7 @@ fn compiler_errors_remain_compiler_errors_with_qrate_relative_locations() {
 #[test]
 fn lint_preserves_normal_compiler_failures_and_remaps_default_qrate_locations() {
     let qrate = qrate();
-    let tool = format!("--qlinty={}", env!("CARGO_BIN_EXE_qlinty"));
+    let tool = format!("--qlinties={}", env!("CARGO_BIN_EXE_qlinties"));
     for source in [
         "unitary fn broken(q:Q<Bit>)->Q<Bit>{missing}",
         "invalid syntax!",
@@ -365,7 +365,7 @@ fn standalone_lint_needs_no_qrate_and_preserves_warnings() {
         "// 雪\r\nuse std::gate::x;\r\nunitary fn identity(q:Q<Bit>)->Q<Bit>{q}",
     )
     .unwrap();
-    let tool = format!("--qlinty={}", env!("CARGO_BIN_EXE_qlinty"));
+    let tool = format!("--qlinties={}", env!("CARGO_BIN_EXE_qlinties"));
     let args = [
         OsString::from("lint"),
         source.path().as_os_str().to_os_string(),
@@ -393,9 +393,9 @@ fn standalone_lint_needs_no_qrate_and_preserves_warnings() {
 #[test]
 fn cli_misuse_is_exit_two_and_json_is_one_object() {
     for args in [
-        vec!["check", "--qlinty=somewhere"],
+        vec!["check", "--qlinties=somewhere"],
         vec!["check", "--deny-warnings"],
-        vec!["lint", "--qlinty="],
+        vec!["lint", "--qlinties="],
         vec!["--version", "check"],
         vec!["check", "--format=json", "--format=json"],
         vec!["build", "unexpected"],
@@ -428,7 +428,7 @@ fn cli_misuse_is_exit_two_and_json_is_one_object() {
 #[cfg(unix)]
 fn script(directory: &Path, body: &str) -> PathBuf {
     use std::os::unix::fs::PermissionsExt;
-    let path = directory.join("fake-qlinty");
+    let path = directory.join("fake-qlinties");
     fs::write(&path, format!("#!/bin/sh\n{body}\n")).unwrap();
     fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
     path
@@ -457,7 +457,7 @@ fn no_qlirgo_command_invokes_cargo() {
             .env("PATH", trap.path())
             .args([command, "--format=json"]);
         if command == "lint" {
-            process.arg(format!("--qlinty={}", env!("CARGO_BIN_EXE_qlinty")));
+            process.arg(format!("--qlinties={}", env!("CARGO_BIN_EXE_qlinties")));
         }
         let output = process.output().unwrap();
         assert_eq!(
@@ -500,7 +500,7 @@ fn selected_tools_do_not_fall_back_and_bad_transport_is_rejected() {
         let report = qlirgo::run(&[
             OsString::from("lint"),
             source.path().as_os_str().to_os_string(),
-            OsString::from(format!("--qlinty={}", path.display())),
+            OsString::from(format!("--qlinties={}", path.display())),
         ]);
         assert_eq!(report.exit_code, 1);
         assert_eq!(report.envelope.diagnostics[0].category, "tool");
@@ -508,7 +508,7 @@ fn selected_tools_do_not_fall_back_and_bad_transport_is_rejected() {
     let report = qlirgo::run(&[
         OsString::from("lint"),
         source.path().as_os_str().to_os_string(),
-        OsString::from("--qlinty=/this/path/does/not/exist"),
+        OsString::from("--qlinties=/this/path/does/not/exist"),
     ]);
     assert_eq!(report.exit_code, 1);
     assert_eq!(report.envelope.diagnostics[0].id, "tool_missing");
@@ -534,14 +534,14 @@ fn closed_child_schema_identity_and_coordinates_are_checked() {
     let tool_path = script(tool.path(), &format!("/bin/cat {}", quoted(&response_path)));
     let digest = qlirgo_tools::snapshot::digest_path(&tool_path).unwrap();
     let valid = json!({
-        "format":"qlinty.result","version":1,"command":"lint","outcome":"ok","diagnostics":[],
+        "format":"qlinties.result","version":1,"command":"lint","outcome":"ok","diagnostics":[],
         "result":{"source_count":1,"source_id":frozen.source_id(),"qleisli_check":{"status":"passed","reason":null},
-          "tool":{"name":"qlinty","version":qlirgo_tools::VERSION,"executable_sha256":digest,"qleisli_version":"0.3.0-beta","profile":"finite-v0"}}
+          "tool":{"name":"qlinties","version":qlirgo_tools::VERSION,"executable_sha256":digest,"qleisli_version":"0.3.0-beta","profile":"finite-v0"}}
     });
     let args = [
         OsString::from("lint"),
         source.path().as_os_str().to_os_string(),
-        OsString::from(format!("--qlinty={}", tool_path.display())),
+        OsString::from(format!("--qlinties={}", tool_path.display())),
     ];
     fs::write(&response_path, serde_json::to_vec(&valid).unwrap()).unwrap();
     assert_eq!(qlirgo::run(&args).exit_code, 0);

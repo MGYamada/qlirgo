@@ -5,8 +5,8 @@
 
 use std::path::Path;
 
-use qlinty_engine::support::report::Diagnostic;
-use qlinty_engine::support::snapshot::{Files, InputDirectory};
+use qlinties_engine::support::report::Diagnostic;
+use qlinties_engine::support::snapshot::{Files, InputDirectory};
 
 use super::{changed_files, validate_formatted};
 
@@ -122,7 +122,7 @@ fn apply_with_hook(
             return Err(io_error(label, "Source must be an ordinary file."));
         }
         let mut bytes = Vec::new();
-        file.take(qlinty_engine::support::snapshot::FILE_BYTES + 1)
+        file.take(qlinties_engine::support::snapshot::FILE_BYTES + 1)
             .read_to_end(&mut bytes)
             .map_err(|error| io_error(label, error))?;
         Ok(bytes)
@@ -250,7 +250,7 @@ mod tests {
             } else {
                 root.clone()
             };
-            let input = qlinty_engine::support::source::capture_source(&selected).unwrap();
+            let input = qlinties_engine::support::source::capture_source(&selected).unwrap();
             let formatted = format_files(input.sources.files()).unwrap();
             std::fs::rename(&root, &old).unwrap();
             std::fs::create_dir(&root).unwrap();

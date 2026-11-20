@@ -18,8 +18,8 @@ use crate::report::{Diagnostic, Location, Report, coordinates, tool_info};
 use crate::rules::{self, DOUBLE_INVERSE, REDUNDANT_REPEAT_ONE, UNUSED_IMPORT};
 use crate::snapshot::{Files, FrozenSources};
 
-const FORMAT: &str = "qlinty.result";
-const HELP: &str = "qlinty <source-root> [--format=json] [--deny-warnings]\nqlinty --list-rules [--format=json]\nqlinty --version [--format=json]\nqlinty --help [--format=json]\n\nCheck frozen Qleisli sources before emitting advisory lint diagnostics.\nNo source rewriting or mathematical evidence is produced.";
+const FORMAT: &str = "qlinties.result";
+const HELP: &str = "qlinties <source-root> [--format=json] [--deny-warnings]\nqlinties --list-rules [--format=json]\nqlinties --version [--format=json]\nqlinties --help [--format=json]\n\nCheck frozen Qleisli sources before emitting advisory lint diagnostics.\nNo source rewriting or mathematical evidence is produced.";
 
 struct Options {
     source_root: Option<PathBuf>,
@@ -94,13 +94,13 @@ pub fn run(args: &[OsString]) -> Report {
         return Report::ok(FORMAT, "help", json!({ "help": HELP }));
     }
     if options.version {
-        return match tool_info("qlinty", super::VERSION) {
+        return match tool_info("qlinties", super::VERSION) {
             Ok(tool) => Report::ok(FORMAT, "version", json!({ "tool": tool })),
             Err(diagnostic) => Report::fail(FORMAT, "version", diagnostic, 1),
         };
     }
     if options.list_rules {
-        return match tool_info("qlinty", super::VERSION) {
+        return match tool_info("qlinties", super::VERSION) {
             Ok(tool) => {
                 let mut catalog = rules::catalog();
                 catalog["tool"] = tool;
@@ -124,7 +124,7 @@ pub fn run(args: &[OsString]) -> Report {
 }
 
 fn analyze(sources: &FrozenSources, configuration: &Files, deny_warnings: bool) -> Report {
-    let tool = match tool_info("qlinty", super::VERSION) {
+    let tool = match tool_info("qlinties", super::VERSION) {
         Ok(tool) => tool,
         Err(diagnostic) => return Report::fail(FORMAT, "lint", diagnostic, 1),
     };

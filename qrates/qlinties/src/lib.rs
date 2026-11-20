@@ -1,6 +1,6 @@
-//! Qlinty product and its separately audited internal Rust support surface.
+//! Qlinties product and its separately audited internal Rust support surface.
 
-pub mod qlinty;
+pub mod qlinties;
 pub mod rules;
 pub mod support;
 

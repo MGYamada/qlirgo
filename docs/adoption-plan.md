@@ -19,7 +19,7 @@ After these foundations, connect the [toolchain selector](toolchains.md), struct
 
 ## 1. Explain local diagnostics
 
-Use the existing named diagnostic IDs. Keep qlirgo-owned package/manifest errors, snapshot and transport failures, formatting/documentation failures, and advisory lint rules in a shared catalog. Common support remains in qlinty. Reuse the current lint rule catalog's rationale and promotion policy rather than create a conflicting rule inventory.
+Use the existing named diagnostic IDs. Keep qlirgo-owned package/manifest errors, snapshot and transport failures, formatting/documentation failures, and advisory lint rules in a shared catalog. Common support remains in qlinties. Reuse the current lint rule catalog's rationale and promotion policy rather than create a conflicting rule inventory.
 
 Adopt a source-free `--explain <id>` direction for each executable, with human and JSON presentations. The implementation specification must define argument combinations, unknown-ID behavior, catalog ownership, and independent catalog versioning. Catalog entries should describe the cause, relevant contract, a minimal failing example where useful, and a supported correction. Diagnostic wording remains explanatory prose; the ID supplies the stable join.
 

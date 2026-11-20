@@ -38,7 +38,7 @@ fn explicit_sibling_and_path_selection_share_the_same_captured_object_contract()
         let qlirgo = host.join("qlirgo");
         fs::copy(env!("CARGO_BIN_EXE_qlirgo"), &qlirgo).unwrap();
         for (name, binary) in [
-            ("qlinty", env!("CARGO_BIN_EXE_qlinty")),
+            ("qlinties", env!("CARGO_BIN_EXE_qlinties")),
             ("qlifmt", env!("CARGO_BIN_EXE_qlifmt")),
             ("qlidoc", env!("CARGO_BIN_EXE_qlidoc")),
         ] {
@@ -47,7 +47,7 @@ fn explicit_sibling_and_path_selection_share_the_same_captured_object_contract()
             fs::rename(tools.join(name), tools.join(&target)).unwrap();
             symlink(target, tools.join(name)).unwrap();
         }
-        for (operation, name) in [("lint", "qlinty"), ("fmt", "qlifmt"), ("doc", "qlidoc")] {
+        for (operation, name) in [("lint", "qlinties"), ("fmt", "qlifmt"), ("doc", "qlidoc")] {
             let mut command = Command::new(&qlirgo);
             command
                 .current_dir(root.path())
@@ -102,15 +102,15 @@ fn replacing_the_host_path_never_reports_the_replacement_digest() {
     )
     .unwrap();
     fs::set_permissions(&tool, fs::Permissions::from_mode(0o700)).unwrap();
-    let report = json!({"format":"qlinty.result","version":1,"command":"lint","outcome":"ok","diagnostics":[],"result":{
+    let report = json!({"format":"qlinties.result","version":1,"command":"lint","outcome":"ok","diagnostics":[],"result":{
         "source_count":0,"source_id":digest_files("qleisli.source.v1", &Files::new()),
         "qleisli_check":{"status":"not_run","reason":"no_sources"},
-        "tool":{"name":"qlinty","version":qlirgo_tools::VERSION,"executable_sha256":digest_path(&tool).unwrap(),"qleisli_version":"0.3.0-beta","profile":"finite-v0"}}});
+        "tool":{"name":"qlinties","version":qlirgo_tools::VERSION,"executable_sha256":digest_path(&tool).unwrap(),"qleisli_version":"0.3.0-beta","profile":"finite-v0"}}});
     fs::write(&response, serde_json::to_vec(&report).unwrap()).unwrap();
     let output = Command::new(&qlirgo)
         .arg("lint")
         .arg(&sources)
-        .arg(format!("--qlinty={}", tool.display()))
+        .arg(format!("--qlinties={}", tool.display()))
         .arg("--format=json")
         .output()
         .unwrap();

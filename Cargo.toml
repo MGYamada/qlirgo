@@ -18,7 +18,7 @@ name = "qlirgo_tools"
 
 [workspace]
 members = ["."]
-exclude = ["rust/qlinty", "rust/qlifmt", "rust/qlidoc"]
+exclude = ["rust/qlinties", "rust/qlifmt", "rust/qlidoc"]
 resolver = "3"
 
 [workspace.dependencies]
@@ -51,12 +51,12 @@ name = "qlirgo"
 path = "src/bin/qlirgo.rs"
 
 [[bin]]
-name = "qlinty"
-path = "src/bin/qlinty.rs"
+name = "qlinties"
+path = "src/bin/qlinties.rs"
 
 [[test]]
-name = "qlinty"
-path = "tests/qlinty.rs"
+name = "qlinties"
+path = "tests/qlinties.rs"
 
 [[bin]]
 name = "qlifmt"

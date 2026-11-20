@@ -9,7 +9,7 @@ fail() {
 usage() {
     cat <<'EOF'
 Usage: sh install.sh [--version MAJOR.MINOR.PATCH[-beta[.N]]] [--prefix PATH]
-Install qlirgo, qlinty, qlifmt, and qlidoc without Rust or Cargo.
+Install qlirgo, qlinties, qlifmt, and qlidoc without Rust or Cargo.
 Supports Linux x86_64 and macOS x86_64/ARM64. Linux ARM64 is unavailable.
 The default is the latest formal release under $HOME/.local.
 PATH must be absolute. No sudo or shell configuration changes are made.
@@ -164,14 +164,14 @@ main() {
     # The producer emits only these six regular files, without directory entries.
     {
         printf '%s\n' "$bundle/LICENSE" "$bundle/NOTICE"
-        for tool in qlirgo qlinty qlifmt qlidoc; do printf '%s\n' "$bundle/bin/$tool"; done
+        for tool in qlirgo qlinties qlifmt qlidoc; do printf '%s\n' "$bundle/bin/$tool"; done
     } | sort > "$work/expected"
     tar -P -tzf "$work/$archive" > "$work/inventory" || fail "Invalid archive."
     sort "$work/inventory" > "$work/actual"
     cmp -s "$work/expected" "$work/actual" || fail "Unsafe or unexpected archive inventory."
     tar -P -tvzf "$work/$archive" > "$work/types" || fail "Invalid archive metadata."
     awk '
-        /\/bin\/(qlirgo|qlinty|qlifmt|qlidoc)$/ {
+        /\/bin\/(qlirgo|qlinties|qlifmt|qlidoc)$/ {
             if (substr($0, 1, 10) != "-rwxr-xr-x") exit 1
             next
         }
@@ -187,7 +187,7 @@ main() {
     unpacked=$work/unpacked/$bundle
     # This new-name candidate requires the exact beta pairing. Its preparation
     # does not change published legacy bundles or authorize a release.
-    for tool in qlirgo qlinty qlifmt qlidoc; do
+    for tool in qlirgo qlinties qlifmt qlidoc; do
         [ -f "$unpacked/bin/$tool" ] && [ ! -L "$unpacked/bin/$tool" ] && [ -x "$unpacked/bin/$tool" ] || fail "Invalid executable: $tool"
         actual_version=$("$unpacked/bin/$tool" --version) || fail "Cannot execute $tool on this system."
         [ "$actual_version" = "$tool $version (Qleisli 0.3.0-beta, finite-v0)" ] || fail "Incorrect executable version: $tool"
@@ -211,7 +211,7 @@ main() {
         case "$previous_name" in *[!a-zA-Z0-9._-]*|*..*) fail "Unsafe current link." ;; esac
         [ -f "$managed/$previous/.archive-sha256" ] && [ ! -L "$managed/$previous" ] || fail "Current bundle is not managed by this installer."
     fi
-    for tool in qlirgo qlinty qlifmt qlidoc; do
+    for tool in qlirgo qlinties qlifmt qlidoc; do
         link=$prefix/bin/$tool
         if [ -e "$link" ] || [ -L "$link" ]; then
             [ -L "$link" ] && [ "$(readlink "$link")" = "../lib/qlirgo/current/bin/$tool" ] || fail "Refusing to overwrite existing $link; choose another --prefix for the qlirgo migration."
@@ -222,13 +222,13 @@ main() {
         [ -d "$destination" ] && [ ! -L "$destination" ] && [ ! -L "$destination/bin" ] || fail "Unsafe existing bundle."
         [ -f "$destination/.archive-sha256" ] && [ ! -L "$destination/.archive-sha256" ] || fail "Existing bundle is unmanaged."
         [ "$(cat "$destination/.archive-sha256")" = "$expected_hash" ] || fail "Existing release has different archive bytes."
-        for file in LICENSE NOTICE bin/qlirgo bin/qlinty bin/qlifmt bin/qlidoc; do
+        for file in LICENSE NOTICE bin/qlirgo bin/qlinties bin/qlifmt bin/qlidoc; do
             [ -f "$destination/$file" ] && [ ! -L "$destination/$file" ] && cmp -s "$unpacked/$file" "$destination/$file" || fail "Existing bundle differs: $file"
             case "$file" in bin/*) expected_mode=-rwxr-xr-x ;; *) expected_mode=-rw-r--r-- ;; esac
             actual_mode=$(ls -ld "$destination/$file" | awk '{print substr($1, 1, 10)}')
             [ "$actual_mode" = "$expected_mode" ] || fail "Existing bundle mode differs: $file"
         done
-        for tool in qlirgo qlinty qlifmt qlidoc; do [ -x "$destination/bin/$tool" ] || fail "Existing executable is not executable: $tool"; done
+        for tool in qlirgo qlinties qlifmt qlidoc; do [ -x "$destination/bin/$tool" ] || fail "Existing executable is not executable: $tool"; done
     else
         stage=$(mktemp -d "$managed/.stage.XXXXXX")
         # Extract again on the destination filesystem so the final move is atomic.
@@ -236,7 +236,7 @@ main() {
         printf '%s\n' "$expected_hash" > "$stage/$bundle/.archive-sha256"
         mv "$stage/$bundle" "$destination"
     fi
-    for tool in qlirgo qlinty qlifmt qlidoc; do
+    for tool in qlirgo qlinties qlifmt qlidoc; do
         if [ ! -L "$prefix/bin/$tool" ]; then
             created_links="$created_links $tool"
             ln -s "../lib/qlirgo/current/bin/$tool" "$prefix/bin/$tool"

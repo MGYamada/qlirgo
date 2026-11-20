@@ -7,14 +7,14 @@ use crate::report::{Diagnostic, path_argument};
 
 use super::request::{QrateOperation, Request, SourceSelection};
 
-pub(super) const HELP: &str = "qlirgo check|build|test [--manifest-path=PATH] [--format=json]\nqlirgo lint [source-root] [--manifest-path=PATH] [--qlinty=PATH] [--deny-warnings] [--format=json]\nqlirgo fmt [source-root] [--manifest-path=PATH] [--qlifmt=PATH] [--check] [--format=json]\nqlirgo doc [--manifest-path=PATH] [--qlidoc=PATH] [--document-private-items] [--format=json]\nqlirgo --help|--version [--format=json]\nPath options also accept --option PATH.\nStandalone source roots and --manifest-path are mutually exclusive.\nUse qlinty --list-rules to inspect advisory rule policy.\nQlirgo manages Qleisli qrates. Install the Rust tools from a prebuilt GitHub release or with Cargo outside qlirgo commands.";
+pub(super) const HELP: &str = "qlirgo check|build|test [--manifest-path=PATH] [--format=json]\nqlirgo lint [source-root] [--manifest-path=PATH] [--qlinties=PATH] [--deny-warnings] [--format=json]\nqlirgo fmt [source-root] [--manifest-path=PATH] [--qlifmt=PATH] [--check] [--format=json]\nqlirgo doc [--manifest-path=PATH] [--qlidoc=PATH] [--document-private-items] [--format=json]\nqlirgo --help|--version [--format=json]\nPath options also accept --option PATH.\nStandalone source roots and --manifest-path are mutually exclusive.\nUse qlinties --list-rules to inspect advisory rule policy.\nQlirgo manages Qleisli qrates. Install the Rust tools from a prebuilt GitHub release or with Cargo outside qlirgo commands.";
 
 #[derive(Default)]
 struct Options {
     command: String,
     manifest: Option<PathBuf>,
     source: Option<PathBuf>,
-    qlinty: Option<PathBuf>,
+    qlinties: Option<PathBuf>,
     qlifmt: Option<PathBuf>,
     qlidoc: Option<PathBuf>,
     deny_warnings: bool,
@@ -52,11 +52,11 @@ pub(super) fn parse(args: &[OsString]) -> Result<Request, Diagnostic> {
             }
             options.manifest =
                 Some(path_argument("--manifest-path", arg, &mut remaining).map_err(usage)?);
-        } else if arg == "--qlinty" || arg.starts_with("--qlinty=") {
-            if options.qlinty.is_some() {
-                return Err(usage("--qlinty requires one nonempty path."));
+        } else if arg == "--qlinties" || arg.starts_with("--qlinties=") {
+            if options.qlinties.is_some() {
+                return Err(usage("--qlinties requires one nonempty path."));
             }
-            options.qlinty = Some(path_argument("--qlinty", arg, &mut remaining).map_err(usage)?);
+            options.qlinties = Some(path_argument("--qlinties", arg, &mut remaining).map_err(usage)?);
         } else if arg == "--qlifmt" || arg.starts_with("--qlifmt=") {
             if options.qlifmt.is_some() {
                 return Err(usage("--qlifmt requires one nonempty path."));
@@ -112,8 +112,8 @@ pub(super) fn parse(args: &[OsString]) -> Result<Request, Diagnostic> {
             "A standalone source root cannot be combined with --manifest-path; select either a source root or a qrate manifest.",
         ));
     }
-    if options.command != "lint" && (options.qlinty.is_some() || options.deny_warnings) {
-        return Err(usage("--qlinty and --deny-warnings apply only to lint."));
+    if options.command != "lint" && (options.qlinties.is_some() || options.deny_warnings) {
+        return Err(usage("--qlinties and --deny-warnings apply only to lint."));
     }
     if options.command != "fmt" && (options.qlifmt.is_some() || options.check) {
         return Err(usage("--qlifmt and --check apply only to fmt."));
@@ -145,7 +145,7 @@ pub(super) fn parse(args: &[OsString]) -> Result<Request, Diagnostic> {
         },
         "lint" => Request::Lint {
             input,
-            executable: options.qlinty,
+            executable: options.qlinties,
             deny_warnings: options.deny_warnings,
         },
         "fmt" => Request::Format {

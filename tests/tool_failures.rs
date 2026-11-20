@@ -212,7 +212,7 @@ fn descendant_fixture(command: &str, rejection: &str) -> (tempfile::TempDir, Det
     fs::set_permissions(&script, fs::Permissions::from_mode(0o755)).unwrap();
     let frozen = FrozenSources::capture(&root.path().join("sources")).unwrap();
     let name = match command {
-        "lint" => "qlinty",
+        "lint" => "qlinties",
         "fmt" => "qlifmt",
         _ => "qlidoc",
     };
@@ -256,7 +256,7 @@ fn descendant_fixture(command: &str, rejection: &str) -> (tempfile::TempDir, Det
 
 fn run_descendant_tool(root: &Path, command: &str) -> qlirgo_tools::report::Report {
     let name = match command {
-        "lint" => "qlinty",
+        "lint" => "qlinties",
         "fmt" => "qlifmt",
         _ => "qlidoc",
     };

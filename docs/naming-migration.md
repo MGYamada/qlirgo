@@ -1,10 +1,10 @@
-# qlirgo / qlinty naming migration
+# qlirgo / qlinties naming migration
 
 Status: functional qlirgo 0.2.0-beta preparation, not a publication. The GitHub
 repository is MGYamada/qlirgo. The root package and private Rust component versions
-are 0.2.0-beta, while bundled qrate manifests retain base version 0.2.0; the four tools are qlirgo, qlinty, qlifmt and qlidoc. qrate remains
+are 0.2.0-beta, while bundled qrate manifests retain base version 0.2.0; the four tools are qlirgo, qlinties, qlifmt and qlidoc. qrate remains
 unchanged. The root library is qlirgo_tools and shared support belongs to the
-independent qlinty qrate. Root CLI/test adapters remain wiring only.
+independent qlinties qrate. Root CLI/test adapters remain wiring only.
 
 ## Transitional manifests
 
@@ -55,15 +55,18 @@ Standalone format/document operations remain syntax-only.
 
 Qleisli stays exactly =0.3.0-beta and its source, loader and bundled std are not
 edited. Its whole ecosystem filename/default migration belongs to 0.3.0 stable.
-The beta registry package is unavailable; explicit local source/checker checks
-cannot establish registry or release readiness.
+The four Cargo lockfiles select the published crates.io package from the
+[Qleisli beta release](https://github.com/MGYamada/Qleisli/releases/tag/v0.3.0-beta).
 
 ## Public names and distribution
 
-The CLI option is --qlinty. There are no old qargo/qlippy command aliases,
+The previous draft name was `qlinty`. The executable, explicit tool option
+(`--qlinties`), linter engine identity and version-1 envelope now use
+`qlinties`. The bundle ships no `qlinty` command and rejects `--qlinty` and
+`qlinty.result`. The three lint rule IDs, source spans and exit codes are preserved. There are no old qargo/qlippy command aliases,
 --qlippy option, old-tool search fallback or old JSON acceptance. Shell aliases
 are a user choice. Parent envelopes/build records are qlirgo.result and
-qlirgo.build-record version 2; the linter uses qlinty.result version 1. qlifmt and
+qlirgo.build-record version 2; the linter uses qlinties.result version 1. qlifmt and
 qlidoc envelopes remain version 1. Other fields/contracts retain their shapes.
 Product versions, manifest versions and protocol versions remain independent.
 Qrate versions may carry SemVer prerelease identifiers (for example 0.2.0-beta

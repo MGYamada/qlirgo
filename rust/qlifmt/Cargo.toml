@@ -12,7 +12,7 @@ description = "Token-preserving Qleisli formatter whose sources belong to the ql
 path = "../../qrates/qlifmt/src/lib.rs"
 
 [dependencies]
-qlinty-engine = { version = "=0.2.0-beta", path = "../qlinty" }
+qlinties-engine = { version = "=0.2.0-beta", path = "../qlinties" }
 qleisli = "=0.3.0-beta"
 serde_json = "=1.0.145"
 

@@ -1,15 +1,15 @@
 # Developer-only Rust build configuration. Qlirgo never reads or executes this.
 [package]
-name = "qlinty-engine"
+name = "qlinties-engine"
 version = "0.2.0-beta"
 edition = "2024"
 rust-version = "1.85"
 license = "Apache-2.0"
 publish = false
-description = "Pure Rust lint engine whose sources belong to the qlinty qrate"
+description = "Pure Rust lint engine whose sources belong to the qlinties qrate"
 
 [lib]
-path = "../../qrates/qlinty/src/lib.rs"
+path = "../../qrates/qlinties/src/lib.rs"
 
 [dependencies]
 qleisli = "=0.3.0-beta"
@@ -32,13 +32,13 @@ unsafe_code = "forbid"
 resolver = "3"
 
 [[bin]]
-name = "qlinty"
-path = "../../qrates/qlinty/src/bin/qlinty.rs"
+name = "qlinties"
+path = "../../qrates/qlinties/src/bin/qlinties.rs"
 
 [[test]]
 name = "engine"
-path = "../../qrates/qlinty/tests/engine.rs"
+path = "../../qrates/qlinties/tests/engine.rs"
 
 [[test]]
 name = "snapshot"
-path = "../../qrates/qlinty/tests/snapshot.rs"
+path = "../../qrates/qlinties/tests/snapshot.rs"

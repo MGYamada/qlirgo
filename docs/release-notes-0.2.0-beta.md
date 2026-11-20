@@ -1,12 +1,12 @@
 # qlirgo 0.2.0-beta
 
-Candidate release notes; publication is pending the exact Qleisli beta registry
-package and all release gates. This beta is not the latest formal release.
+Candidate release notes. The dependency is the published Qleisli beta crate.
+Publication of the tool bundle is pending its own release gates. This beta is not the latest formal release.
 
-- Rename the functional qargo and qlippy commands to qlirgo and qlinty. The bundle
-  installs qlirgo, qlinty, qlifmt and qlidoc at 0.2.0-beta. Bundled qrates remain
+- Rename the functional qargo and qlippy commands to qlirgo and qlinties. The bundle
+  installs qlirgo, qlinties, qlifmt and qlidoc at 0.2.0-beta. Bundled qrates remain
   ordinary independent qrates at base version 0.2.0.
-- JSON uses qlirgo.result and qlirgo.build-record version 2, qlinty.result version 1;
+- JSON uses qlirgo.result and qlirgo.build-record version 2, qlinties.result version 1;
   qlifmt/qlidoc stay version 1. Artifact/install namespaces use qlirgo. Old command
   options, selected-tool responses and JSON names are not aliases.
 - Qlirgo prefers Qlirgo.toml and accepts Qargo.toml fallback. Dual manifests must

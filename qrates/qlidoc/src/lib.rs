@@ -10,9 +10,9 @@ use qleisli::frontend::ast::{Decl, FnBody, TypeDecl, TypeDeclKind};
 use qleisli::frontend::documentation::DocComment;
 use qleisli::frontend::lexer::{Token, TokenKind, lex};
 use qleisli::frontend::parser::parse_documented_module;
-use qlinty_engine::support::report::{Diagnostic, Report, path_argument, tool_info};
-use qlinty_engine::support::snapshot::{Files, portable_relative};
-use qlinty_engine::support::source::{capture_source, parse_diagnostic, syntax_step};
+use qlinties_engine::support::report::{Diagnostic, Report, path_argument, tool_info};
+use qlinties_engine::support::snapshot::{Files, portable_relative};
+use qlinties_engine::support::source::{capture_source, parse_diagnostic, syntax_step};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 
@@ -396,7 +396,7 @@ pub fn render_files(files: &Files, include_private: bool) -> Result<Files, Diagn
 }
 
 fn absolute_normalized(path: &Path) -> Result<PathBuf, Diagnostic> {
-    qlinty_engine::support::publication::absolute_normalized(path)
+    qlinties_engine::support::publication::absolute_normalized(path)
         .map_err(|error| output_error(error.to_string()))
 }
 
@@ -465,17 +465,17 @@ fn reject_input_overlap(input: &Path, output: &Path) -> Result<(), Diagnostic> {
 
 /// Atomically publish a complete output directory, reusing only byte-identical artifacts.
 pub fn publish(output: &Path, files: &Files) -> Result<(), Diagnostic> {
-    qlinty_engine::support::publication::publish(output, files, &std::collections::BTreeSet::new())
+    qlinties_engine::support::publication::publish(output, files, &std::collections::BTreeSet::new())
         .map_err(publication_error)
 }
 
 /// Publish below the retained qrate directory, never a replacement at its old path.
 pub fn publish_at(
-    root: &qlinty_engine::support::snapshot::InputDirectory,
+    root: &qlinties_engine::support::snapshot::InputDirectory,
     output: &Path,
     files: &Files,
 ) -> Result<(), Diagnostic> {
-    qlinty_engine::support::publication::publish_at(
+    qlinties_engine::support::publication::publish_at(
         root,
         output,
         files,
@@ -484,9 +484,9 @@ pub fn publish_at(
     .map_err(publication_error)
 }
 
-fn publication_error(error: qlinty_engine::support::publication::PublicationError) -> Diagnostic {
+fn publication_error(error: qlinties_engine::support::publication::PublicationError) -> Diagnostic {
     match error {
-        qlinty_engine::support::publication::PublicationError::Mismatch => Diagnostic::error(
+        qlinties_engine::support::publication::PublicationError::Mismatch => Diagnostic::error(
             "artifact_mismatch",
             "tool",
             "Existing documentation artifacts are inconsistent; nothing was overwritten.",

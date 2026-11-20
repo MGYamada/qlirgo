@@ -14,7 +14,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        component: ["qlinty", "qlifmt", "qlidoc"]
+        component: ["qlinties", "qlifmt", "qlidoc"]
         os: ["ubuntu-latest", "macos-latest"]
         toolchain: ["1.85.0", "stable"]
     steps:
@@ -35,7 +35,7 @@ jobs:
           printf 'QLEISLI_BUNDLE_SOURCE_ROOT=%s\n' "$qleisli_bundle_source_root" >> "$GITHUB_ENV"
           cargo +${{ matrix.toolchain }} build --frozen --bins
           mkdir -p "$RUNNER_TEMP/bundle/bin"
-          cp target/debug/qlirgo target/debug/qlinty target/debug/qlifmt target/debug/qlidoc "$RUNNER_TEMP/bundle/bin/"
+          cp target/debug/qlirgo target/debug/qlinties target/debug/qlifmt target/debug/qlidoc "$RUNNER_TEMP/bundle/bin/"
           python3 scripts/qrate_project.py --component '${{ matrix.component }}' --destination "$RUNNER_TEMP/extracted" --cargo "$(rustup which --toolchain '${{ matrix.toolchain }}' cargo)"
           component_dir="$RUNNER_TEMP/extracted/rust/${{ matrix.component }}"
           (cd "$component_dir"; cargo +${{ matrix.toolchain }} metadata --frozen --format-version=1 > "$RUNNER_TEMP/component-dependencies.json")

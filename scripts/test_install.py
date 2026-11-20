@@ -254,7 +254,7 @@ class InstallerTests(unittest.TestCase):
             self.assertEqual((prefix / "bin" / tool).read_text(), "old tool " + tool)
             self.assertEqual(os.readlink(prefix / "bin" / tool), "../lib/qargo/current/bin/" + tool)
         self.assertFalse((prefix / "bin/qlirgo").exists())
-        self.assertFalse((prefix / "bin/qlinty").exists())
+        self.assertFalse((prefix / "bin/qlinties").exists())
 
     def test_all_platform_cpu_mappings_and_rosetta(self):
         for system, arch, target in (
@@ -338,7 +338,7 @@ class InstallerTests(unittest.TestCase):
         self.fixture.release()
         directory = self.fixture.prefix / "bin"
         directory.mkdir(parents=True)
-        path = directory / "qlinty"
+        path = directory / "qlinties"
         path.write_text("keep me")
         self.failure(self.fixture.run())
         self.assertEqual(path.read_text(), "keep me")
@@ -352,7 +352,7 @@ class InstallerTests(unittest.TestCase):
         self.fixture.release()
         self.success(self.fixture.run())
         current = self.fixture.current()
-        (self.fixture.prefix / "bin/qlinty").write_text("changed")
+        (self.fixture.prefix / "bin/qlinties").write_text("changed")
         self.failure(self.fixture.run())
         self.assertEqual(self.fixture.current(), current)
 

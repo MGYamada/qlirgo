@@ -3,8 +3,8 @@ use std::fs;
 use std::process::Command;
 
 use qlifmt_engine::{apply_files, changed_files, diff, format_files, run, validate_formatted};
-use qlinty_engine::support::report::Envelope;
-use qlinty_engine::support::snapshot::Files;
+use qlinties_engine::support::report::Envelope;
+use qlinties_engine::support::snapshot::Files;
 use tempfile::TempDir;
 
 const SOURCE: &str = "pub unitary fn identity(q:Q<Bit>)->Q<Bit>{q}";

@@ -39,13 +39,13 @@ def isolated_config(project, component, work, native_env):
 
 def require_lint_case(name, fixture, args, json_mode, result, envelope):
     """Do not count two matching early refusals as source-check equivalence."""
-    if name != "qlinty" or args not in (["src"], ["src", "--deny-warnings"]):
+    if name != "qlinties" or args not in (["src"], ["src", "--deny-warnings"]):
         return
     expected = 1 if fixture in ("syntax", "type") else 0
     require(result.returncode == expected, "Unexpected lint fixture exit: " + fixture)
     if not json_mode:
         return
-    require(envelope.get("format") == "qlinty.result" and
+    require(envelope.get("format") == "qlinties.result" and
             type(envelope.get("version")) is int and envelope["version"] == 1 and
             envelope.get("command") == "lint" and
             envelope.get("outcome") == ("error" if expected else "ok"),
@@ -79,7 +79,7 @@ def compare_entrypoints(name, standalone, bundled, work, environment):
                 "syntax": "not a module {{{", "type": "pub unitary fn invalid()->Q<Bit>{missing()}"}
     cases = [["--help"], ["--version"], ["--unknown"], [], ["--version", "--version"],
              ["--format=xml"], ["--help", "--version"]]
-    if name == "qlinty":
+    if name == "qlinties":
         cases += [["--list-rules"], ["src"], ["src", "--deny-warnings"]]
     elif name == "qlifmt":
         cases += [["src"], ["src", "--check"], ["src", "--check", "--check"]]

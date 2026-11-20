@@ -1,7 +1,7 @@
 schema-version = 2
 
 [qrate]
-name = "qlinty"
+name = "qlinties"
 version = "0.2.0"
 edition = "2026"
 

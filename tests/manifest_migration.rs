@@ -42,7 +42,7 @@ fn managed(root: &Path, command: &str, extra: &[&str], expected: i32) -> Value {
 }
 fn standalone(root: &Path, expected: i32) -> Value {
     report(
-        Command::new(env!("CARGO_BIN_EXE_qlinty"))
+        Command::new(env!("CARGO_BIN_EXE_qlinties"))
             .arg(root)
             .arg("--format=json")
             .output()
@@ -97,7 +97,7 @@ fn effective_configuration_normalizes_names_but_input_snapshots_do_not() {
         }
         assert_eq!(
             standalone(&root.path().join("src"), 0)["format"],
-            "qlinty.result"
+            "qlinties.result"
         );
     }
     assert!(configurations.windows(2).all(|pair| pair[0] == pair[1]));
@@ -220,7 +220,7 @@ fn nested_manifest_pairs_are_checked_before_any_tool_execution() {
         format!("{MANIFEST}# mismatch"),
     )
     .unwrap();
-    managed(root.path(), "lint", &["--qlinty", "/nonexistent-child"], 1);
+    managed(root.path(), "lint", &["--qlinties", "/nonexistent-child"], 1);
     let value = standalone(&root.path().join("src"), 1);
     assert_eq!(value["diagnostics"][0]["id"], "manifest_conflict");
     assert!(!root.path().join("target").exists());
@@ -246,7 +246,9 @@ fn invalid_new_name_entries_do_not_disappear_behind_legacy_files() {
 #[test]
 fn old_linter_option_is_not_an_alias() {
     let root = project(&NAMES[..1], MANIFEST);
-    managed(root.path(), "lint", &["--qlippy", "/nonexistent-child"], 2);
+    for option in ["--qlippy", "--qlinty"] {
+        managed(root.path(), "lint", &[option, "/nonexistent-child"], 2);
+    }
 }
 
 #[cfg(unix)]
@@ -260,7 +262,7 @@ fn old_linter_json_is_rejected_without_running_a_fallback() {
     let value = managed(
         root.path(),
         "lint",
-        &["--qlinty", child.to_str().unwrap()],
+        &["--qlinties", child.to_str().unwrap()],
         1,
     );
     assert_eq!(value["diagnostics"][0]["id"], "invalid_tool_response");
@@ -357,7 +359,7 @@ fn malformed_versions_fail_before_tool_selection_or_artifact_publication() {
             let root = project(names, &manifest);
             for command in ["check", "build", "lint", "fmt", "doc", "test"] {
                 let options: &[&str] = match command {
-                    "lint" => &["--qlinty", "/nonexistent-child"],
+                    "lint" => &["--qlinties", "/nonexistent-child"],
                     "fmt" => &["--qlifmt", "/nonexistent-child"],
                     "doc" => &["--qlidoc", "/nonexistent-child"],
                     _ => &[],

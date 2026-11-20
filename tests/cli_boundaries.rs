@@ -89,7 +89,7 @@ fn space_separated_paths_match_equality_paths_for_all_qlirgo_commands() {
         ("check", None),
         ("build", None),
         ("test", None),
-        ("lint", Some(("--qlinty", env!("CARGO_BIN_EXE_qlinty")))),
+        ("lint", Some(("--qlinties", env!("CARGO_BIN_EXE_qlinties")))),
         ("fmt", Some(("--qlifmt", env!("CARGO_BIN_EXE_qlifmt")))),
         ("doc", Some(("--qlidoc", env!("CARGO_BIN_EXE_qlidoc")))),
     ] {
@@ -118,16 +118,16 @@ fn path_options_reject_missing_empty_repeated_and_incompatible_values() {
         vec!["check", "--manifest-path", "--format=json"],
         vec!["check", "--manifest-path=a", "--manifest-path", "b"],
         vec!["check", "--manifest-path", "a", "--manifest-path=b"],
-        vec!["lint", "--qlinty"],
-        vec!["lint", "--qlinty", "--deny-warnings"],
-        vec!["lint", "--qlinty=a", "--qlinty", "b"],
+        vec!["lint", "--qlinties"],
+        vec!["lint", "--qlinties", "--deny-warnings"],
+        vec!["lint", "--qlinties=a", "--qlinties", "b"],
         vec!["fmt", "--qlifmt", ""],
         vec!["fmt", "--qlifmt", "--check"],
         vec!["fmt", "--qlifmt", "a", "--qlifmt=b"],
         vec!["doc", "--qlidoc"],
         vec!["doc", "--qlidoc", "--document-private-items"],
         vec!["doc", "--qlidoc=a", "--qlidoc", "b"],
-        vec!["check", "--qlinty", "a"],
+        vec!["check", "--qlinties", "a"],
         vec!["lint", "--qlifmt", "a"],
         vec!["fmt", "--qlidoc", "a"],
         vec!["--help", "--manifest-path", "a"],
@@ -225,7 +225,7 @@ fn external_lint_cli_preserves_warnings_denial_and_source_locations() {
     let source = "// 日本語 🦀\r\nunitary fn had(q:Q<Bit>)->Q<Bit>{h(q)}\r\nuse std::gate::x;\r\nunitary fn once(q:Q<Bit>)->Q<Bit>{power(had,1)(q)}\r\n";
     fs::write(root.path().join("library.qli"), source).unwrap();
     let path = root.path().to_str().unwrap();
-    let tool = format!("--qlinty={}", env!("CARGO_BIN_EXE_qlinty"));
+    let tool = format!("--qlinties={}", env!("CARGO_BIN_EXE_qlinties"));
     for denied in [false, true] {
         let mut args = vec!["lint", path, &tool];
         if denied {
@@ -271,7 +271,7 @@ fn actual_compiler_rejection_survives_the_child_transport() {
     let output = qlirgo(&[
         "lint",
         root.path().to_str().unwrap(),
-        &format!("--qlinty={}", env!("CARGO_BIN_EXE_qlinty")),
+        &format!("--qlinties={}", env!("CARGO_BIN_EXE_qlinties")),
     ]);
     assert_eq!(output.status.code(), Some(1));
     let report = json(&output);
@@ -281,7 +281,7 @@ fn actual_compiler_rejection_survives_the_child_transport() {
     assert_eq!(report["result"]["qleisli_check"]["status"], "failed");
     assert_eq!(report["result"]["steps"][2]["status"], "not_run");
     assert_eq!(report["result"]["steps"][2]["reason"], "compiler_error");
-    assert_eq!(report["result"]["tool"]["name"], "qlinty");
+    assert_eq!(report["result"]["tool"]["name"], "qlinties");
     assert_eq!(report["result"]["orchestrator"]["name"], "qlirgo");
 }
 
@@ -322,13 +322,13 @@ fn empty_qrate_builds_a_reusable_package_snapshot() {
 }
 
 #[test]
-fn qlinty_qrate_checks_and_lints_its_trivial_language_source() {
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("qrates/qlinty");
+fn qlinties_qrate_checks_and_lints_its_trivial_language_source() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("qrates/qlinties");
     let sources = qlirgo_tools::snapshot::collect_tree(&root.join("src"), Some("qli")).unwrap();
     assert_eq!(sources.len(), 1);
     assert_eq!(
         sources["smoke.qli"],
-        include_bytes!("../qrates/qlinty/src/smoke.qli")
+        include_bytes!("../qrates/qlinties/src/smoke.qli")
     );
     assert!(
         qlirgo_tools::snapshot::collect_tree(&root.join("tests"), Some("qlt"))
@@ -391,9 +391,9 @@ fn every_qlirgo_operation_leaves_a_cargo_path_trap_untouched() {
 }
 
 #[test]
-fn qlinty_rust_and_language_sources_belong_to_the_qrate_identity_and_snapshot() {
+fn qlinties_rust_and_language_sources_belong_to_the_qrate_identity_and_snapshot() {
     use qlirgo_tools::snapshot::{Files, collect_tree, materialize};
-    let original = Path::new(env!("CARGO_MANIFEST_DIR")).join("qrates/qlinty");
+    let original = Path::new(env!("CARGO_MANIFEST_DIR")).join("qrates/qlinties");
     let mut files = Files::new();
     files.insert(
         "Qlirgo.toml".into(),
@@ -407,16 +407,16 @@ fn qlinty_rust_and_language_sources_belong_to_the_qrate_identity_and_snapshot() 
     for rust_file in [
         "src/lib.rs",
         "src/adapter.rs",
-        "src/qlinty.rs",
+        "src/qlinties.rs",
         "src/report.rs",
         "src/snapshot.rs",
-        "src/bin/qlinty.rs",
+        "src/bin/qlinties.rs",
         "tests/engine.rs",
         "tests/snapshot.rs",
     ] {
         assert!(
             files.contains_key(rust_file),
-            "qlinty Rust source missing from qrate: {rust_file}"
+            "qlinties Rust source missing from qrate: {rust_file}"
         );
     }
     let root = materialize(&files).unwrap();
@@ -440,8 +440,8 @@ fn qlinty_rust_and_language_sources_belong_to_the_qrate_identity_and_snapshot() 
     );
     let snapshot = artifact.join("snapshot");
     assert_eq!(collect_tree(&snapshot, None).unwrap(), files);
-    let engine = root.path().join("src/qlinty.rs");
-    let mut changed = files["src/qlinty.rs"].clone();
+    let engine = root.path().join("src/qlinties.rs");
+    let mut changed = files["src/qlinties.rs"].clone();
     changed.extend_from_slice(b"\n// Changed qrate Rust source.\n");
     fs::write(&engine, changed).unwrap();
     let checked = qlirgo(&["check", &manifest]);
@@ -453,8 +453,8 @@ fn qlinty_rust_and_language_sources_belong_to_the_qrate_identity_and_snapshot() 
         report["result"]["source_id"]
     );
     assert_eq!(
-        fs::read(snapshot.join("src/qlinty.rs")).unwrap(),
-        files["src/qlinty.rs"]
+        fs::read(snapshot.join("src/qlinties.rs")).unwrap(),
+        files["src/qlinties.rs"]
     );
     let mut changed = files["src/smoke.qli"].clone();
     changed.extend_from_slice(b"\n// Changed Qleisli source.\n");

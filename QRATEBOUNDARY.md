@@ -29,24 +29,24 @@ verified explicitly.
 
 ## 2. Standard tools are three ordinary qrates
 
-`qlinty`, `qlifmt`, and `qlidoc` are bundled with the qlirgo environment as standard
+`qlinties`, `qlifmt`, and `qlidoc` are bundled with the qlirgo environment as standard
 tools. They remain three independent qrates, subject to the same boundaries as
 any internal or external qrate.
 
-Shared Rust support belongs to qlinty and is an explicit implementation dependency
+Shared Rust support belongs to qlinties and is an explicit implementation dependency
 of the other tools. Reuse does not merge their qrate identities or checking
 results. Default discovery and standard installation are distribution
 conveniences, not privileged qrate semantics.
 
 ### Shared support is not the linter product
 
-Keep a logical internal shared-library boundary within qlinty's ownership. Its
+Keep a logical internal shared-library boundary within qlinties's ownership. Its
 allowed surface consists of input capture, identities, diagnostic data and
 transport, syntax utilities, executable handling, and validated publication.
-The ordinary checker adapter may serve qlirgo and qlinty, but qlifmt and qlidoc
+The ordinary checker adapter may serve qlirgo and qlinties, but qlifmt and qlidoc
 must remain syntax-only. This does not require a new published support crate.
 
-Other tools must not depend on qlinty's lint rules, rule catalog, promotion or
+Other tools must not depend on qlinties's lint rules, rule catalog, promotion or
 severity policies, lint command, CLI defaults, or product-version globals. They
 must not gain Qleisli semantic dependencies or acceptance conditions through
 that Rust dependency. Each caller supplies its own product identity and policy;
@@ -75,7 +75,7 @@ Isolation and adapter-equivalence checks are specified in the extraction plan.
 
 ## 3. Aligned tool versions are a distribution policy
 
-Keep the standard qlinty, qlifmt, and qlidoc releases aligned with qlirgo for bundle
+Keep the standard qlinties, qlifmt, and qlidoc releases aligned with qlirgo for bundle
 convenience. For historical qargo 0.1.9 this included the three qrate manifests, their private Rust
 development packages, and all four executables. Release preparation explicitly
 updates and validates these declarations.

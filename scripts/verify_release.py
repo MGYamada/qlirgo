@@ -15,7 +15,7 @@ from qrate_project import audit
 from release_version import qrate_version
 
 
-QRATES = ("qlinty", "qlifmt", "qlidoc")
+QRATES = ("qlinties", "qlifmt", "qlidoc")
 TOOLS = ("qlirgo", *QRATES)
 QLEISLI_VERSION = "0.3.0-beta"
 # Release orchestration reads one authority; component declarations stay literal.
@@ -39,9 +39,9 @@ def verify_versions(root, expected=None):
         for label, section in ((f"qrates/{name}/Qlirgo.toml", "qrate"), (f"rust/{name}/Cargo.toml", "package")):
             data = tomllib.loads((root / label).read_text())
             require(data[section]["version"] == (base if section == "qrate" else release), "Release version mismatch: " + label)
-        if name != "qlinty":
+        if name != "qlinties":
             data = tomllib.loads((root / f"rust/{name}/Cargo.toml").read_text())
-            require(data["dependencies"]["qlinty-engine"]["version"] == "=" + release,
+            require(data["dependencies"]["qlinties-engine"]["version"] == "=" + release,
                     "Support dependency selection differs from the release")
     return release
 
@@ -302,7 +302,7 @@ def verify_qrate(qrate, binaries, tools, environment, std, checker):
     configuration = source_configuration(expected)
     manifest = "--manifest-path=" + str(qrate / "Qlirgo.toml")
     reports = {}
-    for command, selected_tool in (("check", "qlirgo"), ("build", "qlirgo"), ("lint", "qlinty"), ("fmt", "qlifmt"), ("doc", "qlidoc")):
+    for command, selected_tool in (("check", "qlirgo"), ("build", "qlirgo"), ("lint", "qlinties"), ("fmt", "qlifmt"), ("doc", "qlidoc")):
         args = [command, manifest]
         if command == "lint":
             args.append("--deny-warnings")
@@ -353,9 +353,9 @@ def verify_qrate(qrate, binaries, tools, environment, std, checker):
     require(report["result"]["input_id"] == expected_input_id, "Unavailable QLT lost input binding")
     require(report["result"]["backend"] == {"name": "QLT", "status": "unavailable", "reason": "not_implemented"}, "Incorrect unavailable QLT record")
 
-    for name in ("qlinty", "qlifmt"):
+    for name in ("qlinties", "qlifmt"):
         args = [str(qrate / "src")]
-        args.append("--deny-warnings" if name == "qlinty" else "--check")
+        args.append("--deny-warnings" if name == "qlinties" else "--check")
         report = invoke(binaries[name], args, environment, name)
         require(report["format"] == name + ".result" and report["result"]["tool"] == tools[name], "Incorrect standalone tool identity")
         require(report["result"]["source_id"] == expected_source_id, "Standalone source binding mismatch")
@@ -428,10 +428,10 @@ def verify(source_root, bin_dir, qleisli_source_root=None):
             require(tool["qleisli_version"] == QLEISLI_VERSION and tool["profile"] == "finite-v0", "Incorrect compiler/profile")
             require(tool["executable_sha256"] == sha256(binary.read_bytes()), "Incorrect executable identity")
             tools[name] = tool
-        catalog = invoke(binaries["qlinty"], ["--list-rules"], environment, "qlinty")
+        catalog = invoke(binaries["qlinties"], ["--list-rules"], environment, "qlinties")
         require(catalog["command"] == "list-rules", "Incorrect rule catalog command")
         policy = catalog["result"]
-        require(policy["catalog_version"] == 1 and policy["tool"] == tools["qlinty"], "Incorrect catalog identity")
+        require(policy["catalog_version"] == 1 and policy["tool"] == tools["qlinties"], "Incorrect catalog identity")
         require([group["id"] for group in policy["groups"]] == ["idiom", "complexity", "resource"], "Incorrect rule groups")
         require([rule["id"] for rule in policy["rules"]] == ["double_inverse", "redundant_repeat_one", "unused_import"], "Incorrect rule inventory")
         require(all(rule["promotion"] == "advisory" and rule["default_severity"] == "warning" for rule in policy["rules"]), "Incorrect advisory rule policy")

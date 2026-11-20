@@ -26,7 +26,7 @@ only Qleisli's bundled, version-aligned std qrate has privileged status.
 | Immutable | An observed subject and a published artifact retain their identity. | Keep captured bytes and their digest private and read-only. Give each checker/tool a separate materialized working copy. Publish complete artifacts without replacement; reuse requires exact agreement. |
 | Bound | A result applies only to the input and tool that produced it. | Bind checked qrates in one type. Hold executable snapshots and child cleanup guards through response and artifact validation. Only accepted, captured output bytes may reach the effect phase. |
 | Explicit | An operation's authority and outcome are visible. | Represent commands and input selection as closed variants. Preserve source-free help/version, skipped empty checks, syntax-only processing, unavailable QLT, selected-tool failures, and partial formatting progress. |
-| Independent | Each component owns one authority. | Qleisli owns acceptance; qlirgo owns qrate capture and orchestration; qlinty owns shared support and advisory linting; qlifmt/qlidoc own syntax transformations; qleisliup owns lifecycle/authentication; Cargo builds the Rust implementation outside qlirgo operations. |
+| Independent | Each component owns one authority. | Qleisli owns acceptance; qlirgo owns qrate capture and orchestration; qlinties owns shared support and advisory linting; qlifmt/qlidoc own syntax transformations; qleisliup owns lifecycle/authentication; Cargo builds the Rust implementation outside qlirgo operations. |
 
 Immutability does not prohibit an explicit formatting operation. Formatting
 derives a candidate from an immutable subject, validates it, then checks that the
@@ -48,7 +48,7 @@ arguments
 
 Help/version stop before input capture. QLT stops with its explicit unavailable
 result after qrate validation. Check/build use ordinary linked checking; lint
-validates the linked checker result returned by qlinty. Formatting/documentation
+validates the linked checker result returned by qlinties. Formatting/documentation
 use syntax only. Empty inputs retain their explicit skipped-check status.
 
 The phases constrain dependencies:
@@ -67,10 +67,10 @@ The phases constrain dependencies:
   boundary accepts a response only after all validation succeeds. Its format
   and document plans keep validated bytes until the effect phase.
 - Shared `snapshot`, `adapter`, `report`, `executable`, and `publication` support
-  remains inside the qlinty qrate. The ordinary checker gets its own working
+  remains inside the qlinties qrate. The ordinary checker gets its own working
   copy, and syntax engines read immutable captured bytes.
 
-Qlinty's `support` module is logically separate
+Qlinties's `support` module is logically separate
 from its linter product. Formatter/documenter consumers cannot depend on lint
 rules, product defaults, or ordinary-checker execution. Root component adapters
 are wiring only; qlirgo retains its own orchestration and response validation.

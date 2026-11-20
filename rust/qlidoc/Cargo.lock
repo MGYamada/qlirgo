@@ -259,6 +259,8 @@ dependencies = [
 [[package]]
 name = "qleisli"
 version = "0.3.0-beta"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a314cd166b33085c641ced70db9431dd7d0acfee6f8a4623992de99d2fbe3b6c"
 dependencies = [
  "rustix",
  "toml",
@@ -269,14 +271,14 @@ name = "qlidoc-engine"
 version = "0.2.0-beta"
 dependencies = [
  "qleisli",
- "qlinty-engine",
+ "qlinties-engine",
  "serde_json",
  "sha2",
  "tempfile",
 ]
 
 [[package]]
-name = "qlinty-engine"
+name = "qlinties-engine"
 version = "0.2.0-beta"
 dependencies = [
  "libc",

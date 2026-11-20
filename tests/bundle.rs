@@ -7,11 +7,11 @@ use serde_json::{Value, json};
 
 const TOOLS: [(&str, &str); 4] = [
     ("qlirgo", env!("CARGO_BIN_EXE_qlirgo")),
-    ("qlinty", env!("CARGO_BIN_EXE_qlinty")),
+    ("qlinties", env!("CARGO_BIN_EXE_qlinties")),
     ("qlifmt", env!("CARGO_BIN_EXE_qlifmt")),
     ("qlidoc", env!("CARGO_BIN_EXE_qlidoc")),
 ];
-const QRATES: [&str; 3] = ["qlinty", "qlifmt", "qlidoc"];
+const QRATES: [&str; 3] = ["qlinties", "qlifmt", "qlidoc"];
 
 fn response(output: &Output) -> Value {
     assert!(output.stderr.is_empty(), "{:?}", output.stderr);
@@ -238,7 +238,7 @@ fn bundled_operations_never_start_cargo_or_rustdoc() {
                 .display()
         );
         for (binary, args) in [
-            (env!("CARGO_BIN_EXE_qlinty"), vec![source]),
+            (env!("CARGO_BIN_EXE_qlinties"), vec![source]),
             (env!("CARGO_BIN_EXE_qlifmt"), vec![source, "--check"]),
             (env!("CARGO_BIN_EXE_qlidoc"), vec![source, &destination]),
         ] {
