@@ -46,6 +46,13 @@ presence. Its framed SHA-256 identity excludes its own record, checkout paths,
 timestamps, caches, Git state and build outputs. Qrate inputs and this complete
 Rust project are separate artifacts. No qargo result schema is extended.
 
+On Linux x86_64 and macOS ARM64, CI selects the native checker archive from
+the [linked beta release](https://github.com/MGYamada/Qleisli/releases/tag/v0.3.0-beta).
+It checks the archive SHA-256, the release commit recorded by the registry
+crate, the full-replay manifest, its source hashes against the selected
+dependency, and its installed payload. The Intel macOS distribution job builds
+and audits the native checker from that crate with its pinned Lean toolchain.
+
 The initial extraction supports the current explicit crates.io and local qlippy
 dependency graph. Git dependencies and custom Cargo configuration fail until
 their capture contract is implemented. Supplied helpers/generated sources in
