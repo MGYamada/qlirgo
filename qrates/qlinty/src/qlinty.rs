@@ -5,9 +5,10 @@ use std::ffi::OsString;
 use std::path::PathBuf;
 
 use qleisli::frontend::ast::{
-    AxisSelection, BasisExpr, BasisExprKind, Block, Count, Decl, Expr, ExprKind, FnBody, Ident,
-    NatKind, Natural, Pattern, PatternKind, Predicate, Requirement, Span, StaticOp, StaticOpKind,
-    StaticParamKind, StmtKind, Type, TypeKind,
+    AxisSelection, BasisExpr, BasisExprKind, Block, CoherentArm, Count, Decl, Expr, ExprKind,
+    FnBody, Ident, Module, NatKind, Natural, Pattern, PatternKind, Predicate, QuantumLabel,
+    Requirement, Span, StaticOp, StaticOpKind, StaticParamKind, StmtKind, Type, TypeDeclKind,
+    TypeKind,
 };
 use qleisli::frontend::project::{ModuleOrigin, Project};
 use serde_json::json;
@@ -192,9 +193,7 @@ fn lint_project(project: &Project, sources: &FrozenSources) -> Result<Vec<Diagno
             ));
         }
         let mut visitor = Visitor::default();
-        for decl in &module.ast.decls {
-            visitor.decl(decl);
-        }
+        visitor.module(&module.ast);
         for import in &module.ast.uses {
             // A public reexport may be used externally even without a local call.
             if import.public {
@@ -290,8 +289,28 @@ struct Visitor {
 }
 
 impl Visitor {
+    fn coherent_arm(&mut self, arm: &CoherentArm) {
+        match arm {
+            CoherentArm::Operation(operation) => self.static_op(operation),
+            CoherentArm::Block(block) => self.block(block),
+        }
+    }
+
     fn name(&mut self, name: &Ident) {
         self.names.insert(name.text.clone());
+    }
+
+    fn module(&mut self, module: &Module) {
+        for decl in &module.type_decls {
+            if let TypeDeclKind::Record { fields } = &decl.kind {
+                for field in fields {
+                    self.ty(&field.ty);
+                }
+            }
+        }
+        for decl in &module.decls {
+            self.decl(decl);
+        }
     }
 
     fn decl(&mut self, decl: &Decl) {
@@ -420,6 +439,23 @@ impl Visitor {
 
     fn basis(&mut self, expression: &BasisExpr) {
         match &expression.kind {
+            BasisExprKind::Match(selection) => {
+                self.basis(&selection.scrutinee);
+                for arm in &selection.arms {
+                    self.name(&arm.label.type_name);
+                    self.basis(&arm.body);
+                }
+            }
+            BasisExprKind::Variant(value) => self.name(&value.type_name),
+            BasisExprKind::Record(record) => {
+                self.name(&record.type_name);
+                for field in &record.fields {
+                    self.basis(&field.value);
+                }
+            }
+            BasisExprKind::Field { receiver, .. } | BasisExprKind::BitIndex { receiver, .. } => {
+                self.basis(receiver);
+            }
             BasisExprKind::Name(name) => self.name(name),
             BasisExprKind::Bit(_) | BasisExprKind::Unit => {}
             BasisExprKind::Tuple(items) => {
@@ -493,6 +529,21 @@ impl Visitor {
 
     fn expr(&mut self, expression: &Expr) {
         match &expression.kind {
+            ExprKind::Match(selection) => {
+                self.expr(&selection.scrutinee);
+                for arm in &selection.arms {
+                    self.name(&arm.label.type_name);
+                    self.block(&arm.body);
+                }
+            }
+            ExprKind::Variant(value) => self.name(&value.type_name),
+            ExprKind::Record(record) => {
+                self.name(&record.type_name);
+                for field in &record.fields {
+                    self.expr(&field.value);
+                }
+            }
+            ExprKind::Field { receiver, .. } => self.expr(receiver),
             ExprKind::UnsupportedClosure(closure) => {
                 for parameter in &closure.parameters {
                     self.pattern(parameter);
@@ -510,7 +561,7 @@ impl Visitor {
                 }
                 for argument in args {
                     self.expr(&argument.value);
-                    if let Some(selection) = &argument.selection {
+                    if let Some(selection) = argument.selection() {
                         match selection {
                             AxisSelection::Index(index) => self.natural(index),
                             AxisSelection::Range { start, end } => {
@@ -548,6 +599,16 @@ impl Visitor {
                 self.name(function);
                 self.expr(input);
             }
+            ExprKind::QuantumMatch(selection) => {
+                self.expr(&selection.selector);
+                self.expr(&selection.target);
+                for arm in &selection.arms {
+                    if let QuantumLabel::Variant(value) = &arm.label {
+                        self.name(&value.type_name);
+                    }
+                    self.coherent_arm(&arm.body);
+                }
+            }
             ExprKind::QuantumIf {
                 control,
                 target,
@@ -556,8 +617,8 @@ impl Visitor {
             } => {
                 self.expr(control);
                 self.expr(target);
-                self.name(zero);
-                self.name(one);
+                self.coherent_arm(zero);
+                self.coherent_arm(one);
             }
             ExprKind::Controlled { operation, args } => {
                 self.static_op(operation);
@@ -633,20 +694,35 @@ impl Visitor {
                 self.expr(input);
                 self.basis(basis);
             }
+            ExprKind::Workspace(scope) => {
+                self.expr(&scope.data);
+                if let Some(dirty) = &scope.dirty {
+                    self.expr(dirty);
+                }
+                self.name(&scope.logical);
+                self.name(&scope.data_binder);
+                self.name(&scope.scratch_binder);
+                self.block(&scope.body);
+            }
             ExprKind::WithComputed {
                 source,
                 function,
+                static_args,
                 binder,
                 body,
             } => {
                 self.expr(source);
                 self.name(function);
+                for argument in static_args {
+                    self.static_op(argument);
+                }
                 self.name(binder);
                 self.block(body);
             }
             ExprKind::CertifiedComputed {
                 source,
                 function,
+                static_args,
                 logical,
                 data_binder,
                 ancilla_binder,
@@ -654,6 +730,9 @@ impl Visitor {
             } => {
                 self.expr(source);
                 self.name(function);
+                for argument in static_args {
+                    self.static_op(argument);
+                }
                 self.name(logical);
                 self.name(data_binder);
                 self.name(ancilla_binder);
@@ -727,6 +806,111 @@ mod tests {
     }
 
     // These parser/visitor tests check lexical coverage, not Qleisli acceptance.
+    #[test]
+    fn nominal_forms_visit_references_without_counting_member_labels() {
+        let source = r#"struct Shape { pub member_only: FieldType, hidden_field: Bits<field_width> }
+enum Local { VariantOnly, Other }
+classical fn basis_value() -> Unit {
+    match basis_input {
+        BasisArm::Left => BasisRecord { member_only: basis_call(BasisValue::Only) }.member_only,
+        BasisArm::Right => basis_fallback
+    }
+}
+fn runtime_value() -> Unit {
+    let record = RuntimeRecord { member_only: RuntimeValue::Only };
+    match record.member_only {
+        RuntimeArm::Left => { power(operation, 1)(runtime_input) },
+        RuntimeArm::Right => { runtime_call(runtime_fallback) }
+    }
+}
+"#;
+        let syntax = qleisli::frontend::parser::parse_module(source).unwrap();
+        let mut visitor = Visitor::default();
+        visitor.module(&syntax);
+        for name in "FieldType field_width basis_input BasisArm BasisRecord basis_call BasisValue basis_fallback RuntimeRecord RuntimeValue RuntimeArm operation runtime_input runtime_call runtime_fallback".split_whitespace() {
+            assert!(visitor.names.contains(name), "missing possible use: {name}");
+        }
+        for member in [
+            "member_only",
+            "hidden_field",
+            "VariantOnly",
+            "Other",
+            "Left",
+            "Right",
+            "Only",
+        ] {
+            assert!(
+                !visitor.names.contains(member),
+                "member is not an import use: {member}"
+            );
+        }
+        let findings: Vec<_> = visitor
+            .findings
+            .iter()
+            .map(|finding| (finding.id, &source[finding.span.start..finding.span.end]))
+            .collect();
+        assert_eq!(findings, [(REDUNDANT_REPEAT_ONE.id, "power(operation, 1)")]);
+    }
+
+    #[test]
+    fn bit_index_and_scoped_forms_keep_possible_import_uses() {
+        let source = r#"classical fn bit() -> Bit { basis_receiver[0] }
+fn computed() -> Unit { with_computed(source, predicate[predicate_width]) { |flag| flag } }
+fn certified() -> Unit {
+    with_computed(source, equation[type(Bits<equation_width>)], logical) { |data, scratch| (data, scratch) }
+}
+fn workspace() -> Unit {
+    let prepared = clean(workspace_input, clean_logical) { |state, work| clean_body(state, work) };
+    dirty(prepared, incoming_scratch, dirty_logical) { |owner, auxiliary| dirty_body(owner, auxiliary) }
+}
+"#;
+        let syntax = qleisli::frontend::parser::parse_module(source).unwrap();
+        let mut visitor = Visitor::default();
+        visitor.module(&syntax);
+        for name in [
+            "basis_receiver",
+            "predicate_width",
+            "equation_width",
+            "workspace_input",
+            "clean_logical",
+            "clean_body",
+            "incoming_scratch",
+            "dirty_logical",
+            "dirty_body",
+        ] {
+            assert!(visitor.names.contains(name), "missing possible use: {name}");
+        }
+        assert!(visitor.findings.is_empty());
+    }
+
+    #[test]
+    fn quantum_match_visits_both_inputs_all_labels_and_operations() {
+        let source = r#"fn nominal() -> Unit {
+    qmatch(select(selector_input), power(target_op, 1)(target_input)) {
+        EnumOnly::Third => third,
+        alias::Choice::First => other::first,
+        EnumOnly::Second => second
+    }
+}
+fn ordinals() -> Unit { qmatch(ordinal_selector, ordinal_target) { 3 => d, 0 => a, 2 => c, 1 => b } }
+"#;
+        let syntax = qleisli::frontend::parser::parse_module(source).unwrap();
+        let mut visitor = Visitor::default();
+        visitor.module(&syntax);
+        for name in "select selector_input target_op target_input EnumOnly alias::Choice third other::first second ordinal_selector ordinal_target a b c d".split_whitespace() {
+            assert!(visitor.names.contains(name), "missing possible use: {name}");
+        }
+        for label in ["Third", "First", "Second", "0", "1", "2", "3"] {
+            assert!(!visitor.names.contains(label));
+        }
+        assert_eq!(visitor.findings.len(), 1);
+        assert_eq!(visitor.findings[0].id, REDUNDANT_REPEAT_ONE.id);
+        assert_eq!(
+            &source[visitor.findings[0].span.start..visitor.findings[0].span.end],
+            "power(target_op, 1)"
+        );
+    }
+
     #[test]
     fn current_declaration_forms_keep_possible_import_uses() {
         let source = r#"static fn size[const n: Nat]() -> Nat { dimension[n]() + offset - adjustment * factor }

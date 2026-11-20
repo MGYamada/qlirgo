@@ -134,6 +134,66 @@ fn every_declaration_kind_and_signature_comment_is_documented() {
 }
 
 #[test]
+fn quantum_match_bodies_remain_outside_syntax_only_function_signatures() {
+    let input = sources(
+        "control.qli",
+        "/// Selector notes.\npub unitary fn select(s:Q<Bits<2>>,q:Q<Bit>)->(Q<Bits<2>>,Q<Bit>){qmatch(s,q){3=>third,0=>zero,2=>second,1=>first}}",
+    );
+    let output = render_files(&input, false).unwrap();
+    let text = page(&output, "modules/control.md");
+    assert!(text.contains("Selector notes."));
+    assert!(text.contains("pub unitary fn select(s:Q<Bits<2>>,q:Q<Bit>)->(Q<Bits<2>>,Q<Bit>)\n```"));
+    assert!(!text.contains("qmatch"));
+    assert!(!text.contains("third"));
+}
+
+#[test]
+fn nominal_type_docs_preserve_member_order_and_public_visibility() {
+    let input = sources(
+        "types.qli",
+        "/// Choice notes.\npub enum Choice {\n/// Third notes.\nThird,\n/// First notes.\nFirst, Second }\n/// Record notes.\npub struct Record {\n/// Visible notes.\npub visible: Choice,\n/// Secret notes.\nhidden: Unit }\n/// Hidden type notes.\nstruct Hidden { pub field: Bit }\npub struct Empty {}",
+    );
+    let public = render_files(&input, false).unwrap();
+    let text = page(&public, "modules/types.md");
+    assert!(text.contains("## Choice (public)"));
+    assert!(text.contains("pub enum Choice\n```"));
+    assert!(text.contains("Choice notes."));
+    assert!(text.contains("Third notes.") && text.contains("First notes."));
+    assert!(text.find("### Third (variant)").unwrap() < text.find("### First (variant)").unwrap());
+    assert!(text.find("### First (variant)").unwrap() < text.find("### Second (variant)").unwrap());
+    assert!(text.contains("pub struct Record\n```"));
+    assert!(text.contains("pub visible: Choice\n```"));
+    assert!(text.contains("Visible notes."));
+    assert!(text.contains("Private fields are omitted."));
+    assert!(!text.contains("hidden") && !text.contains("Secret notes."));
+    assert!(!text.contains("Hidden"));
+    assert!(text.contains("## Empty (public)"));
+    assert!(!text.contains("No visible declarations."));
+    let all = render_files(&input, true).unwrap();
+    let text = page(&all, "modules/types.md");
+    assert!(text.contains("### hidden (private field)"));
+    assert!(text.contains("hidden: Unit\n```") && text.contains("Secret notes."));
+    assert!(text.contains("## Hidden (private)") && text.contains("Hidden type notes."));
+    assert!(!text.contains("Private fields are omitted."));
+    assert_eq!(render_files(&input, true).unwrap(), all);
+}
+
+#[test]
+fn nominal_member_fences_and_inner_docs_use_original_source_spans() {
+    let input = sources(
+        "fences.qli",
+        "pub struct R {\r\n/*! Inner type notes. */\r\n/// Member notes.\r\npub value: /* ```` retained */ Bits<2>, private_value: Unit }",
+    );
+    let output = render_files(&input, false).unwrap();
+    let text = page(&output, "modules/fences.md");
+    assert!(text.contains("Inner type notes."));
+    assert!(text.contains("Member notes."));
+    assert!(text.contains("`````qli\npub value: /* ```` retained */ Bits<2>\n`````"));
+    assert!(!text.contains("private_value"));
+    assert!(!text.contains('\r'));
+}
+
+#[test]
 fn inner_outer_utf8_crlf_and_markdown_fences_survive_rendering() {
     let input = sources(
         "雪 [module].qli",

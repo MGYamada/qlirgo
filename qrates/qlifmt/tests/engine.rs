@@ -48,6 +48,55 @@ fn initial_style_is_four_spaces_and_idempotent() {
 }
 
 #[test]
+fn nominal_members_and_quantum_match_preserve_tokens_docs_and_arm_order() {
+    // Syntax-only: the formatter does not grant nominal transport or control access.
+    let source = "/// Choices\r\npub enum E{/// Third\r\nC,/// First\r\nA,B}\r\n/// Record\r\npub struct R{/// Public member\r\npub value:E,/// Private member\r\nhidden:Unit}\r\nfn f(s:Q<E>,q:Q<Bit>)->Unit{qmatch(s,q){E::C=>third,/* written order */ E::A=>first,E::B=>second}}\r\nfn bits(s:Q<Bits<2>>,q:Q<Bit>)->Unit{qmatch(s,q){3=>d,0=>a,2=>c,1=>b}}";
+    let original = files(source);
+    let formatted = format_files(&original).unwrap();
+    validate_formatted(&original, &formatted).unwrap();
+    let text = String::from_utf8(formatted["library.qli"].clone()).unwrap();
+    assert!(text.contains("qmatch (s, q)"));
+    assert!(text.find("E::C => third").unwrap() < text.find("E::A => first").unwrap());
+    assert!(text.find("E::A => first").unwrap() < text.find("E::B => second").unwrap());
+    assert!(text.find("3 => d").unwrap() < text.find("0 => a").unwrap());
+    assert!(!text.replace("\r\n", "").contains('\n'));
+    let before = qleisli::frontend::parser::parse_documented_module(source).unwrap();
+    let after = qleisli::frontend::parser::parse_documented_module(&text).unwrap();
+    let attached = |module: &qleisli::frontend::documentation::DocumentedModule| {
+        module
+            .type_declaration_docs
+            .iter()
+            .map(|comments| {
+                comments
+                    .iter()
+                    .map(|comment| comment.text.clone())
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>()
+    };
+    let members = |module: &qleisli::frontend::documentation::DocumentedModule| {
+        module
+            .type_member_docs
+            .iter()
+            .map(|items| {
+                items
+                    .iter()
+                    .map(|comments| {
+                        comments
+                            .iter()
+                            .map(|comment| comment.text.clone())
+                            .collect::<Vec<_>>()
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(attached(&before), attached(&after));
+    assert_eq!(members(&before), members(&after));
+    assert_eq!(format_files(&formatted).unwrap(), formatted);
+}
+
+#[test]
 fn check_preserves_input_while_write_updates_all_files() {
     let root = root(&[("library.qli", SOURCE), ("nested/other.qli", SOURCE)]);
     let report = run(&[root.path().as_os_str().to_owned(), "--check".into()]);

@@ -183,7 +183,8 @@ fn manifest_validation_is_closed_and_rejects_bad_roots_names_versions() {
 #[test]
 fn manifest_edition_is_required_and_validated_before_every_qrate_operation() {
     let field = "edition = \"2026\"\n";
-    let mut invalid = vec![(MANIFEST.replace(field, ""), "invalid_manifest")];
+    let missing = MANIFEST.replace(field, "");
+    let mut invalid = vec![(missing.clone(), "invalid_manifest")];
     for literal in ["2026", "2026.0", "true", "2026-09-30", "[\"2026\"]"] {
         invalid.push((
             MANIFEST.replace(field, &format!("edition = {literal}\n")),
@@ -215,6 +216,11 @@ fn manifest_edition_is_required_and_validated_before_every_qrate_operation() {
             assert_eq!(rejected.envelope.version, 2);
             assert_eq!(rejected.envelope.diagnostics[0].id, expected_id);
             assert_eq!(rejected.envelope.diagnostics[0].category, "qlirgo");
+            if manifest == missing || expected_id == "unsupported_edition" {
+                assert!(rejected.envelope.diagnostics[0].message.contains(
+                    "constitutional regime independently of the compiler release and source grammar"
+                ));
+            }
             assert!(rejected.envelope.result.is_none());
         }
         assert!(!qrate.path().join("target").exists());

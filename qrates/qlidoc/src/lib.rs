@@ -6,7 +6,7 @@ use std::ffi::OsString;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use qleisli::frontend::ast::{Decl, FnBody};
+use qleisli::frontend::ast::{Decl, FnBody, TypeDecl, TypeDeclKind};
 use qleisli::frontend::documentation::DocComment;
 use qleisli::frontend::lexer::{Token, TokenKind, lex};
 use qleisli::frontend::parser::parse_documented_module;
@@ -237,9 +237,11 @@ fn render_signature(output: &mut String, source: &str, decl: &Decl, tokens: &[To
             })
             .map_or(decl.return_type.span.end, |token| token.span.start),
     };
-    let signature = source[decl.span.start..end]
-        .trim_end()
-        .replace("\r\n", "\n");
+    render_source(output, &source[decl.span.start..end]);
+}
+
+fn render_source(output: &mut String, source: &str) {
+    let signature = source.trim_end().replace("\r\n", "\n");
     let longest = signature
         .split(|ch| ch != '`')
         .map(str::len)
@@ -247,6 +249,52 @@ fn render_signature(output: &mut String, source: &str, decl: &Decl, tokens: &[To
         .unwrap_or(0);
     let fence = "`".repeat(3.max(longest + 1));
     output.push_str(&format!("{fence}qli\n{signature}\n{fence}\n\n"));
+}
+
+fn render_type(
+    output: &mut String,
+    source: &str,
+    decl: &TypeDecl,
+    docs: &[DocComment],
+    member_docs: &[Vec<DocComment>],
+    include_private: bool,
+) {
+    output.push_str(&format!(
+        "## {} ({})\n\n",
+        markdown_text(&decl.name.text),
+        if decl.public { "public" } else { "private" }
+    ));
+    render_source(output, &source[decl.span.start..decl.body_span.start]);
+    render_comments(output, docs);
+    match &decl.kind {
+        TypeDeclKind::Enum { variants } => {
+            for (variant, docs) in variants.iter().zip(member_docs) {
+                output.push_str(&format!(
+                    "### {} (variant)\n\n",
+                    markdown_text(&variant.text)
+                ));
+                render_source(output, &source[variant.span.start..variant.span.end]);
+                render_comments(output, docs);
+            }
+        }
+        TypeDeclKind::Record { fields } => {
+            for (field, docs) in fields.iter().zip(member_docs) {
+                if !field.public && !include_private {
+                    continue;
+                }
+                output.push_str(&format!(
+                    "### {} ({} field)\n\n",
+                    markdown_text(&field.name.text),
+                    if field.public { "public" } else { "private" }
+                ));
+                render_source(output, &source[field.span.start..field.span.end]);
+                render_comments(output, docs);
+            }
+            if !include_private && fields.iter().any(|field| !field.public) {
+                output.push_str("Private fields are omitted.\n\n");
+            }
+        }
+    }
 }
 
 /// Render deterministic Markdown from source syntax, including an index for empty inputs.
@@ -305,6 +353,20 @@ pub fn render_files(files: &Files, include_private: bool) -> Result<Files, Diagn
                 markdown_text(&name.text)
             ));
             render_comments(&mut page, docs);
+        }
+        for (index, decl) in documented.syntax.type_decls.iter().enumerate() {
+            if !decl.public && !include_private {
+                continue;
+            }
+            visible += 1;
+            render_type(
+                &mut page,
+                source,
+                decl,
+                &documented.type_declaration_docs[index],
+                &documented.type_member_docs[index],
+                include_private,
+            );
         }
         for (decl, docs) in documented
             .syntax

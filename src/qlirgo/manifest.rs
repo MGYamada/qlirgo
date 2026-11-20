@@ -10,6 +10,8 @@ use crate::snapshot::{self, Files, FrozenSources, InputDirectory};
 
 const MANIFEST_SCHEMA_VERSION: u32 = 2;
 const QLEISLI_EDITION: &str = "2026";
+const EDITION_SELECTION: &str = "The edition selects the constitutional regime independently of \
+    the compiler release and source grammar.";
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -197,7 +199,9 @@ fn validate_manifest(
         let mut diagnostic = Diagnostic::error(
             "invalid_manifest",
             "qlirgo",
-            "[qrate].edition is required and must be an explicit string; there is no default edition.",
+            format!(
+                "[qrate].edition is required and must be an explicit string; there is no default edition. {EDITION_SELECTION}"
+            ),
         );
         diagnostic.suggestion = Some("Add edition = \"2026\" under [qrate].".into());
         return Err(diagnostic);
@@ -206,7 +210,9 @@ fn validate_manifest(
         let mut diagnostic = Diagnostic::error(
             "unsupported_edition",
             "qlirgo",
-            format!("Unsupported Qleisli edition {edition:?}; only \"2026\" is supported."),
+            format!(
+                "Unsupported Qleisli edition {edition:?}; only \"2026\" is supported. {EDITION_SELECTION}"
+            ),
         );
         diagnostic.suggestion = Some("Set edition = \"2026\" under [qrate].".into());
         return Err(diagnostic);
