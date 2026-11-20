@@ -1,0 +1,43 @@
+name: Prepare the exact Qleisli beta kernel
+description: Verify the published host bundle or build the Intel Mac kernel from the linked crate
+runs:
+  using: composite
+  steps:
+    - name: Select the published native bundle for this host
+      if: runner.os != 'macOS' || runner.arch != 'X64'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        case "$(uname -s)-$(uname -m)" in
+          Linux-x86_64) target=x86_64-unknown-linux-gnu ;;
+          Darwin-arm64) target=aarch64-apple-darwin ;;
+          *) echo 'No published Qleisli beta kernel for this host' >&2; exit 1 ;;
+        esac
+        archive="qleisli-kernel-0.3.0-beta-$target.tar.gz"
+        gh release download v0.3.0-beta -R MGYamada/Qleisli -p "$archive" -D "$RUNNER_TEMP"
+        python3 "$GITHUB_ACTION_PATH/verify.py" "$QLEISLI_SOURCE_ROOT" "$RUNNER_TEMP/$archive" "$RUNNER_TEMP/beta-kernel"
+    - name: Copy Intel Mac toolchain configuration outside the bound sources
+      if: runner.os == 'macOS' && runner.arch == 'X64'
+      shell: bash
+      run: |
+        mkdir "$RUNNER_TEMP/beta-lean-setup"
+        cp "$QLEISLI_SOURCE_ROOT"/lean-kernel/{lean-toolchain,lakefile.toml,lake-manifest.json} "$RUNNER_TEMP/beta-lean-setup/"
+    - name: Prepare the pinned Intel Mac Lean toolchain
+      if: runner.os == 'macOS' && runner.arch == 'X64'
+      uses: leanprover/lean-action@50fcf42d2e460296f1a34b402e990d1b24f8b596
+      with:
+        lake-package-directory: ${{ runner.temp }}/beta-lean-setup
+        auto-config: 'false'
+        build: 'false'
+        test: 'false'
+        lint: 'false'
+        use-github-cache: 'false'
+        use-mathlib-cache: 'false'
+    - name: Build the Intel Mac kernel and run full replay
+      if: runner.os == 'macOS' && runner.arch == 'X64'
+      shell: bash
+      run: python3 -B "$QLEISLI_SOURCE_ROOT/scripts/package_lean_kernel.py" --validation full --output "$RUNNER_TEMP/beta-kernel"
+    - name: Select the associated kernel for every nonempty check
+      shell: bash
+      run: printf 'QLEISLI_KERNEL=%s\n' "$RUNNER_TEMP/beta-kernel/bin/qleisli-kernel" >> "$GITHUB_ENV"
