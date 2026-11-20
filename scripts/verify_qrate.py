@@ -10,7 +10,7 @@ import subprocess
 from capture_build import (BuildGuard, build_binding, capture_native, file_digest,
                            generated_inputs, verify_native_unchanged)
 from qrate_project import (audit, audit_metadata, audit_vendor, canonical,
-                           check_snapshot, closure, entries, manifest, require)
+                           check_snapshot, entries, manifest, require)
 
 
 def isolated_config(project, component, work, native_env):
@@ -18,15 +18,14 @@ def isolated_config(project, component, work, native_env):
         for config in (".cargo/config", ".cargo/config.toml"):
             require(not (ancestor / config).exists(), "Ambient ancestor Cargo configuration: " + str(ancestor / config))
     allowed = {'source': {'crates-io': {'replace-with': 'captured'}, 'captured': {'directory': '../../vendor'}}}
-    for name in closure(component):
-        development = project / "rust" / name
-        require(manifest(development / ".cargo/config.toml") == allowed, "Unsupported Cargo build configuration")
-        require(not (development / ".cargo/config").exists(), "Conflicting legacy Cargo configuration")
-        require(not (development.parent / ".cargo").exists(), "Uncaptured intermediate Cargo configuration")
-        require(not (development / "rust-toolchain").exists(), "Conflicting legacy toolchain selection")
-        require(manifest(development / "rust-toolchain.toml") == {
-            "toolchain": {"channel": "1.85.0", "profile": "minimal", "components": ["clippy", "rustfmt"]}},
-            "Unsupported toolchain declaration")
+    development = project / "rust" / component
+    require(manifest(development / ".cargo/config.toml") == allowed, "Unsupported Cargo build configuration")
+    require(not (development / ".cargo/config").exists(), "Conflicting legacy Cargo configuration")
+    require(not (development.parent / ".cargo").exists(), "Uncaptured intermediate Cargo configuration")
+    require(not (development / "rust-toolchain").exists(), "Conflicting legacy toolchain selection")
+    require(manifest(development / "rust-toolchain.toml") == {
+        "toolchain": {"channel": "1.85.0", "profile": "minimal", "components": ["clippy", "rustfmt"]}},
+        "Unsupported toolchain declaration")
     environment = dict(native_env)
     for name, directory in (("HOME", "home"), ("CARGO_HOME", "cargo-home"), ("RUSTUP_HOME", "rustup-home"),
                             ("TMPDIR", "tmp"), ("CARGO_TARGET_DIR", "target")):
@@ -85,6 +84,8 @@ def compare_entrypoints(name, standalone, bundled, work, environment):
         cases += [["src"], ["src", "--check"], ["src", "--check", "--check"]]
     else:
         cases += [["src"], ["src", "--output=docs"], ["src", "--document-private-items"], ["src", "--output"]]
+    if name in ("qlifmt", "qlidoc"):
+        environment = dict(environment, QLEISLI_KERNEL=str(work / "absent-checker"))
     directory = work / "equivalence"
     count = 0
     for fixture, content in fixtures.items():
@@ -113,6 +114,11 @@ def compare_entrypoints(name, standalone, bundled, work, environment):
                             require(tool["executable_sha256"] == digest, "Invalid actual executable binding")
                         stdout = canonical(envelope)
                     require_lint_case(name, fixture, args, json_mode, result, envelope)
+                    if name in ("qlifmt", "qlidoc") and args == ["src"] and fixture == "valid":
+                        require(result.returncode == 0, "Standalone syntax operation requires another tool")
+                        if json_mode:
+                            require(payload.get("qleisli_check") == {"status": "not_run", "reason": "syntax_only"},
+                                    "Syntax operation must report a syntax-only result")
                     # Default qlidoc output paths also contain the actual tool hash.
                     normalize = lambda data: data.replace(digest.encode(), b"<executable>").replace(digest[7:].encode(), b"<executable-hex>")
                     effects = [(entry["path"].replace(digest[7:], "<executable-hex>"),
@@ -162,7 +168,10 @@ def verify(project, toolchain, bundle, output, kernel):
     record = check_snapshot(project)
     component = record["component"]
     require(not (project / "Cargo.toml").exists(), "Extraction contains a root Cargo manifest")
-    audit(project, closure(component), bundle=False)
+    for directory in ("rust", "qrates"):
+        require({p.name for p in (project / directory).iterdir()} == {component},
+                "Extraction must contain exactly the selected component in " + directory)
+    audit(project, (component,), bundle=False)
     audit_vendor(project, component)
     native, native_env = capture_native(toolchain, kernel)
     output.mkdir(parents=True)

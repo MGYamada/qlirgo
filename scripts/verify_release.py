@@ -39,10 +39,6 @@ def verify_versions(root, expected=None):
         for label, section in ((f"qrates/{name}/Qlirgo.toml", "qrate"), (f"rust/{name}/Cargo.toml", "package")):
             data = tomllib.loads((root / label).read_text())
             require(data[section]["version"] == (base if section == "qrate" else release), "Release version mismatch: " + label)
-        if name != "qlinties":
-            data = tomllib.loads((root / f"rust/{name}/Cargo.toml").read_text())
-            require(data["dependencies"]["qlinties-engine"]["version"] == "=" + release,
-                    "Support dependency selection differs from the release")
     return release
 
 

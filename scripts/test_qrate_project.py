@@ -27,6 +27,7 @@ class ProjectBoundaryTests(unittest.TestCase):
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name).resolve() / "project"
         self.root.mkdir()
+        copy_tree(SOURCE / "tool-support", self.root / "tool-support")
         for directory in ("qrates", "rust"):
             for name in QRATES:
                 copy_tree(SOURCE / directory / name, self.root / directory / name)
@@ -121,9 +122,8 @@ class ProjectBoundaryTests(unittest.TestCase):
         self.assertEqual(before, snapshot(moved, "qlifmt")["project_id"])
 
     def test_every_configuration_dependency_helper_and_generated_input_is_bound(self):
-        labels = [f"rust/{name}/{file}" for name in ("qlinties", "qlifmt")
-                  for file in ("Cargo.toml", "Cargo.lock", "rust-toolchain.toml", ".cargo/config.toml", "build.rs", "helpers/generator.py", "generated/source.rs")]
-        labels += ["qrates/qlinties/src/report.rs", "qrates/qlifmt/src/smoke.qli", "vendor/example/src/lib.rs"]
+        labels = [f"rust/qlifmt/{file}" for file in ("Cargo.toml", "Cargo.lock", "rust-toolchain.toml", ".cargo/config.toml", "build.rs", "helpers/generator.py", "generated/source.rs")]
+        labels += ["tool-support/report.rs", "qrates/qlifmt/src/smoke.qli", "vendor/example/src/lib.rs"]
         for label in labels:
             with self.subTest(label=label):
                 before = self.identity()
@@ -162,6 +162,25 @@ class ProjectBoundaryTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "links/special"):
             self.identity()
 
+    def test_each_tool_audits_without_peer_sources_and_binds_its_shared_inputs(self):
+        for name in QRATES:
+            project = self.root.parent / name
+            for directory in ("qrates", "rust"):
+                copy_tree(self.root / directory / name, project / directory / name)
+            copy_tree(self.root / "tool-support", project / "tool-support")
+            audit(project, (name,), bundle=False)
+            before = snapshot(project, name)
+            self.assertEqual([pkg["name"] for pkg in before["local_packages"]], [name + "-engine"])
+            shared = project / "tool-support/report.rs"
+            shared.write_bytes(shared.read_bytes() + b"\n")
+            self.assertNotEqual(before["local_packages"], snapshot(project, name)["local_packages"])
+            path = project / "rust" / name / "Cargo.toml"
+            peer = next(other for other in QRATES if other != name)
+            with path.open("a") as stream:
+                stream.write(f'\n[build-dependencies]\nalias = {{ package = "{peer}-engine", version = "=0.2.0-beta" }}\n')
+            with self.assertRaisesRegex(RuntimeError, "Tool-to-tool"):
+                audit(project, (name,), bundle=False)
+
     def test_all_declared_dependency_kinds_and_conditional_edges_are_audited(self):
         audit(self.root)
         path = self.root / "rust/qlinties/Cargo.toml"
@@ -180,8 +199,8 @@ class ProjectBoundaryTests(unittest.TestCase):
         for label, addition in (("qrates/qlifmt/src/lib.rs", "use qlinties_engine::rules::RULES;"),
                                 ("qrates/qlifmt/src/lib.rs", "use qlinties_engine as hidden;"),
                                 ("qrates/qlidoc/src/lib.rs", "use qlinties_engine::support::adapter;"),
-                                ("qrates/qlinties/src/report.rs", "use crate::rules;"),
-                                ("qrates/qlinties/src/report.rs", "use crate::{rules};"),
+                                ("tool-support/report.rs", "use crate::rules;"),
+                                ("tool-support/report.rs", "use crate::{rules};"),
                                 ("qrates/qlinties/tests/engine.rs", "use qlirgo_tools::qlirgo;"),
                                 ("qrates/qlinties/src/lib.rs", 'include!("../../../src/lib.rs");')):
             path = self.root / label
@@ -206,7 +225,8 @@ class ProjectBoundaryTests(unittest.TestCase):
              "targets": [{"src_path": str(self.root / "qrates/qlifmt/src/lib.rs")}], "dependencies": []}]}
         audit_metadata(base, self.root)
         for key, value in (("name", "qlirgo"), ("manifest_path", str(SOURCE / "Cargo.toml")),
-                           ("targets", [{"src_path": str(SOURCE / "src/lib.rs")}] ),
+                           ("targets", [{"src_path": str(SOURCE / "src/lib.rs")}]),
+                           ("manifest_path", str(self.root / "rust/qlinties/Cargo.toml")),
                            ("dependencies", [{"path": str(SOURCE)}])):
             data = copy.deepcopy(base)
             data["packages"][0][key] = value
@@ -282,7 +302,8 @@ class ProjectBoundaryTests(unittest.TestCase):
         record = {"package": "archive-checksum", "files": {"lib.rs": sha256(content)[7:]}}
         (directory / ".cargo-checksum.json").write_text(json.dumps(record))
         (self.root / "rust/qlifmt/Cargo.lock").write_text(
-            'version = 4\n[[package]]\nname = "example"\nversion = "1.0.0"\n'
+            'version = 4\n[[package]]\nname = "qlifmt-engine"\nversion = "0.2.0-beta"\n\n'
+            '[[package]]\nname = "example"\nversion = "1.0.0"\n'
             'source = "registry+https://github.com/rust-lang/crates.io-index"\nchecksum = "archive-checksum"\n')
         audit_vendor(self.root, "qlifmt")
         (directory / "lib.rs").write_bytes(b"modified")

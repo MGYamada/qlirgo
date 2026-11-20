@@ -9,7 +9,7 @@ publish = false
 description = "Pure Rust lint engine whose sources belong to the qlinties qrate"
 
 [lib]
-path = "../../qrates/qlinties/src/lib.rs"
+path = "lib.rs"
 
 [dependencies]
 qleisli = "=0.3.0-beta"

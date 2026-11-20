@@ -46,5 +46,5 @@ style design are deferred beyond this Markdown implementation.
 
 Rust development uses the independent `rust/qlidoc/` Cargo workspace with its
 own manifest, lockfile and Rust toolchain declaration. Transfer that directory
-and this qrate together; see [independent development](../../../docs/qrate-development.md)
+together with this qrate and the neutral `tool-support/` sources; see [independent development](../../../docs/qrate-development.md)
 for extraction, dependency capture and verification without the original checkout.

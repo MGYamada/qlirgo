@@ -27,7 +27,7 @@ def verify_package(source_root, archive_path, bin_dir, qleisli_source_root=None)
             packaged[label] = archive.extractfile(entry).read()
 
     expected = {}
-    for directory in ("src", "tests", "docs", "scripts"):
+    for directory in ("src", "tool-support", "tests", "docs", "scripts"):
         for label, content in files_under(source_root / directory).items():
             if not {"target", "__pycache__", ".DS_Store"}.intersection(PurePosixPath(label).parts):
                 expected[directory + "/" + label] = content

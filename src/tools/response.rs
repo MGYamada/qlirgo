@@ -349,7 +349,7 @@ pub(super) fn syntax_response<R: DeserializeOwned + Serialize>(
     if !closed_object(result, fields)
         || result["source_count"].as_u64() != Some(sources.count() as u64)
         || result["source_id"] != sources.source_id()
-        || result["qleisli_check"] != qlinties_engine::source::syntax_step(sources.count())
+        || result["qleisli_check"] != crate::support::source::syntax_step(sources.count())
     {
         return Err(transport(
             "Source tool did not bind its result to the captured inputs and syntax-only processing.",

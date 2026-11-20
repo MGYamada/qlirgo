@@ -33,26 +33,18 @@ verified explicitly.
 tools. They remain three independent qrates, subject to the same boundaries as
 any internal or external qrate.
 
-Shared Rust support belongs to qlinties and is an explicit implementation dependency
-of the other tools. Reuse does not merge their qrate identities or checking
-results. Default discovery and standard installation are distribution
-conveniences, not privileged qrate semantics.
+The three engine workspaces build independently. Each may compile the neutral Rust
+sources in `tool-support/`. No engine depends on a peer package, workspace, source
+tree or executable. Standard discovery and installation are bundle conveniences.
 
-### Shared support is not the linter product
+### Shared Rust sources
 
-Keep a logical internal shared-library boundary within qlinties's ownership. Its
-allowed surface consists of input capture, identities, diagnostic data and
-transport, syntax utilities, executable handling, and validated publication.
-The ordinary checker adapter may serve qlirgo and qlinties, but qlifmt and qlidoc
-must remain syntax-only. This does not require a new published support crate.
-
-Other tools must not depend on qlinties's lint rules, rule catalog, promotion or
-severity policies, lint command, CLI defaults, or product-version globals. They
-must not gain Qleisli semantic dependencies or acceptance conditions through
-that Rust dependency. Each caller supplies its own product identity and policy;
-shared support never silently chooses the linter's identity or behavior for it.
-Shared API changes require downstream compilation and behavior checks for all
-consumers. Linter-only changes must remain behind the linter boundary.
+The neutral modules provide immutable input capture, executable and source
+identities, diagnostic transport, syntax utilities and validated publication.
+Each engine supplies its own product identity and policy. Qlinties owns lint
+rules, its catalog and the ordinary-checker adapter that qlirgo also uses.
+Qlifmt and qlidoc use syntax only. Changes to neutral sources are tested in all
+three independent workspaces. Their bytes enter each Rust project record.
 
 ### Dependency direction and adapter ownership
 

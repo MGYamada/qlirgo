@@ -14,10 +14,12 @@ cargo clippy --frozen --all-targets -- -D warnings
 RUSTDOCFLAGS='-D warnings' cargo doc --frozen --no-deps
 ```
 
-Qlifmt and qlidoc have an exact local Rust dependency on qlinties's support. They
-import `qlinties_engine::support` without depending on lint rules, product defaults
-or the ordinary checker. All three packages remain unpublished. The root bundle
-uses alias/include adapters for the same canonical CLI and test files.
+Each standalone library assembles its own engine from `qrates/<tool>/` and the
+shared Rust modules in `tool-support/`. Its lockfile contains one local package
+and the registry dependencies it uses. The other two tools can be absent during
+extraction, compilation, testing and execution. Qlinties owns the ordinary
+checker adapter. Qlifmt and qlidoc use Qleisli syntax parsing. The public bundle
+embeds the same neutral modules once and wires each canonical entry point.
 
 ## Preparing an extraction
 
@@ -31,7 +33,7 @@ python3 scripts/qrate_project.py --component qlifmt --destination /tmp/qlifmt-pr
 ```
 
 The destination must not exist. It receives the component's `qrates/` and `rust/`
-trees, the corresponding qlinties trees when required, all locked registry sources
+trees, the neutral `tool-support/` sources, all locked registry sources
 and checksums in `vendor/`, license notices, the boundary policy, these
 instructions, and the standalone verification scripts. There is no root qlirgo
 Cargo manifest. Before capture, the extractor restores metadata that Cargo vendor omits from the locked Qleisli package
@@ -53,8 +55,8 @@ crate, the full-replay manifest, its source hashes against the selected
 dependency, and its installed payload. The Intel macOS distribution job builds
 and audits the native checker from that crate with its pinned Lean toolchain.
 
-The initial extraction supports the current explicit crates.io and local qlinties
-dependency graph. Git dependencies and custom Cargo configuration fail until
+Extraction admits each engine’s own local Cargo package and its locked
+crates.io dependencies. Git dependencies and custom Cargo configuration fail until
 their capture contract is implemented. Supplied helpers/generated sources in
 the component's development or qrate trees enter the inventory. Project links,
 special files, escaped local references, and inherited dependencies are rejected.
@@ -97,7 +99,7 @@ manifests. The unchanged identity and new one-qubit bare-H controls must pass ac
 qlinties source checking; syntax and absent-name faults must reach their compiler
 diagnostics. The historical fixture label `type` remains an absent-name fault, not
 a claimed type-mismatch test. Empty fixtures keep their deliberate no-manifest
-control. Formatter/documentation comparisons remain syntax-only.
+control. Formatter and documentation comparisons select an absent checker and require their nonempty syntax-only operations to succeed.
 
 On macOS the Cargo commands run in a dedicated Seatbelt sandbox that permits
 reads from captured inputs and writes only to fresh build/test state. On Linux,

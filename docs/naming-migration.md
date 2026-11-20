@@ -3,8 +3,8 @@
 Status: functional qlirgo 0.2.0-beta preparation, not a publication. The GitHub
 repository is MGYamada/qlirgo. The root package and private Rust component versions
 are 0.2.0-beta, while bundled qrate manifests retain base version 0.2.0; the four tools are qlirgo, qlinties, qlifmt and qlidoc. qrate remains
-unchanged. The root library is qlirgo_tools and shared support belongs to the
-independent qlinties qrate. Root CLI/test adapters remain wiring only.
+unchanged. The root library is qlirgo_tools and the engines share the neutral Rust sources in
+`tool-support/`. Root CLI/test adapters remain wiring only.
 
 ## Transitional manifests
 

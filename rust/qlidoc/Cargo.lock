@@ -270,17 +270,6 @@ dependencies = [
 name = "qlidoc-engine"
 version = "0.2.0-beta"
 dependencies = [
- "qleisli",
- "qlinties-engine",
- "serde_json",
- "sha2",
- "tempfile",
-]
-
-[[package]]
-name = "qlinties-engine"
-version = "0.2.0-beta"
-dependencies = [
  "libc",
  "libproc",
  "qleisli",
