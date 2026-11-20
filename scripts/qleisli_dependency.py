@@ -117,6 +117,45 @@ def package_files(root):
     return result
 
 
+def vendor_index(source, checksum):
+    index = source / ".cargo-checksum.json"
+    require(index.is_file() and not index.is_symlink(), "Missing complete vendored package inventory")
+    raw = index.read_bytes()
+    record = json.loads(raw, object_pairs_hook=unique_object)
+    # Newer Cargo writes an informational $comment alongside the same two data fields.
+    require(isinstance(record, dict) and set(record) - {"$comment"} == {"files", "package"}
+            and isinstance(record.get("$comment", ""), str) and record["package"] == checksum
+            and isinstance(record["files"], dict), "Vendored package identity differs from the explicit locks")
+    return raw, record
+
+
+def complete_qleisli_vendor(source, reference, manifest_path):
+    """Restore Cargo's omitted Git metadata in the fresh extraction before sealing it."""
+    checksum = locked_checksum(manifest_path)
+    raw, record = vendor_index(source, checksum)
+    actual = package_files(source)
+    expected = package_files(reference)
+    require(record["files"] == {k: v["sha256"] for k, v in actual.items()},
+            "Vendored inventory does not match all actual package bytes")
+    require(all(expected.get(k) == v for k, v in actual.items()),
+            "Actual registry and vendored package bytes/modes differ")
+    missing = sorted(expected.keys() - actual.keys())
+    require(all(Path(label).name in {".gitignore", ".gitattributes"} for label in missing),
+            "Cargo vendor omitted an unexpected registry file")
+    if missing:
+        for label in missing:
+            target = source / label
+            target.parent.mkdir(parents=True, exist_ok=True)
+            with target.open("xb") as output:
+                output.write((reference / label).read_bytes())
+            target.chmod(0o755 if expected[label]["executable"] else 0o644)
+            record["files"][label] = expected[label]["sha256"]
+        index = source / ".cargo-checksum.json"
+        require(index.read_bytes() == raw and package_files(source) == expected,
+                "Qleisli package changed while completing the vendored inventory")
+        index.write_text(json.dumps(record, sort_keys=True) + "\n")
+
+
 def same_packaged_source(source, reference, manifest_path, reference_manifest):
     """Bind a vendored copy to an explicit registry source and both actual locks.
 
@@ -127,11 +166,7 @@ def same_packaged_source(source, reference, manifest_path, reference_manifest):
     checksum = locked_checksum(manifest_path)
     require(checksum == locked_checksum(reference_manifest), "Registry package checksums differ")
     index = source / ".cargo-checksum.json"
-    require(index.is_file() and not index.is_symlink(), "Missing complete vendored package inventory")
-    raw_index = index.read_bytes()
-    record = json.loads(raw_index, object_pairs_hook=unique_object)
-    require(set(record) == {"files", "package"} and record["package"] == checksum and
-            isinstance(record["files"], dict), "Vendored package identity differs from the explicit locks")
+    raw_index, record = vendor_index(source, checksum)
     actual = package_files(source)
     hashes = {label: row["sha256"] for label, row in actual.items()}
     require(record["files"] == hashes, "Vendored inventory does not match all actual package bytes")
