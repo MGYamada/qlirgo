@@ -191,7 +191,7 @@ All four tools support `--help`, `--version`, and `--format=json`. The developme
 
 ## 0.1.x support and compatibility
 
-Published 0.2.0 was validated on Linux x86_64 and macOS with Rust 1.85 and stable; Linux ARM64, Windows and Android remain outside that release's support. Those results do not validate the linked migration. Source/package and native distribution validation must be repeated before a future release; no product version or new installer is selected here. All Rust packages retain the unsafe-code prohibition.
+Published qargo 0.1.9 was validated on Linux x86_64 and macOS with Rust 1.85 and stable. Its supported targets exclude Linux ARM64, Windows and Android. The qlirgo 0.2.0-beta candidate requires fresh source, package and native distribution validation against its linked Qleisli release. All Rust packages retain the unsafe-code prohibition.
 
 The public contract covers CLI commands, manifest schema 2, the independently versioned JSON result formats, and exit codes 0/1/2. Path options accept both equality and space-separated syntax, such as `--manifest-path=PATH` and `--manifest-path PATH`, including explicit tool paths and qlidoc's `--output`. Empty, missing, and repeated values are usage errors. Incompatible manifest or result changes require a new schema version independently of the product version. Diagnostic prose and internal Rust library APIs are not stable interfaces. Build records and lint results are metadata, not mathematical evidence; the ordinary Qleisli trust boundary is preserved.
 

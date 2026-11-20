@@ -136,7 +136,8 @@ def capture_native(toolchain, kernel):
                                         "/lib/x86_64-linux-gnu", "/usr/lib64", "/lib64",
                                         "/etc/ld.so.cache", "/etc/ld.so.conf", "/etc/ld.so.conf.d",
                                         "/etc/ssl/openssl.cnf", "/etc/ssl/certs/ca-certificates.crt", "/etc/gitconfig",
-                                        "/sys/kernel/mm/transparent_hugepage/enabled") if Path(name).exists()]
+                                        "/sys/kernel/mm/transparent_hugepage/enabled", "/sys/devices/system/cpu/online",
+                                        "/usr/share/coreutils/locales/uucore/en-US.ftl") if Path(name).exists()]
         roots += [Path("/usr/bin") / name for name in ("gcc", "as", "ld", "ar", "ranlib", "objcopy", "strip", "env", "uname", "sh", "strace", "mkfifo")]
         roots += linux_resource_inputs()
         roots = list(dict.fromkeys(path.resolve() for path in roots))
