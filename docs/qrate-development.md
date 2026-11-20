@@ -34,9 +34,9 @@ The destination must not exist. It receives the component's `qrates/` and `rust/
 trees, the corresponding qlippy trees when required, all locked registry sources
 and checksums in `vendor/`, license notices, the boundary policy, these
 instructions, and the standalone verification scripts. There is no root qargo
-Cargo manifest. Before capture, the extractor restores any packaged .gitignore
-and .gitattributes files omitted by Cargo vendor from the locked Qleisli
-registry source and indexes their bytes. Other omissions, changed bytes, or
+Cargo manifest. Before capture, the extractor restores metadata that Cargo vendor omits from the locked Qleisli package
+and indexes the restored bytes. This includes .gitignore and .gitattributes,
+and on Cargo 1.85 also the root .github tree, .cargo_vcs_info.json and Cargo.toml.orig. Other omissions, changed bytes, or
 changed executable modes fail comparison. Relative source/dependency relationships are preserved. This
 does not create a repository or publish anything.
 

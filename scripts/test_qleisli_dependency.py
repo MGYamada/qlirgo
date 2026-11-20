@@ -160,6 +160,10 @@ class DependencyAssociationTests(unittest.TestCase):
         record = json.loads(index.read_bytes())
         record["$comment"] = "Cargo informational metadata"
         index.write_text(json.dumps(record))
+        (reference / ".github/workflows").mkdir(parents=True)
+        (reference / ".github/workflows/ci.yml").write_text("name: build")
+        (reference / ".cargo_vcs_info.json").write_text('{"git": {}}')
+        (reference / "Cargo.toml.orig").write_bytes(self.manifest.read_bytes())
         (reference / ".gitattributes").write_bytes(b"*.qli text\n")
         (reference / "stdlib/.gitignore").write_bytes(b"target/\n")
         complete_qleisli_vendor(self.source, reference, self.manifest)

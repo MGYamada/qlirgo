@@ -130,7 +130,7 @@ def vendor_index(source, checksum):
 
 
 def complete_qleisli_vendor(source, reference, manifest_path):
-    """Restore Cargo's omitted Git metadata in the fresh extraction before sealing it."""
+    """Restore Cargo's omitted package and Git metadata before sealing the fresh extraction."""
     checksum = locked_checksum(manifest_path)
     raw, record = vendor_index(source, checksum)
     actual = package_files(source)
@@ -140,8 +140,12 @@ def complete_qleisli_vendor(source, reference, manifest_path):
     require(all(expected.get(k) == v for k, v in actual.items()),
             "Actual registry and vendored package bytes/modes differ")
     missing = sorted(expected.keys() - actual.keys())
-    require(all(Path(label).name in {".gitignore", ".gitattributes"} for label in missing),
-            "Cargo vendor omitted an unexpected registry file")
+    # Cargo 1.85 additionally filters the root .github tree and the package's
+    # original Cargo manifest and VCS record. Every restored byte is compared.
+    for label in missing:
+        require(Path(label).name in {".gitignore", ".gitattributes"} or label.startswith(".github/")
+                or label in {"Cargo.toml.orig", ".cargo_vcs_info.json"},
+                "Cargo vendor omitted an unexpected registry file: " + label)
     if missing:
         for label in missing:
             target = source / label
