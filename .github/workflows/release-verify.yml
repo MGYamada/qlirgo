@@ -16,7 +16,8 @@ jobs:
   published:
     name: Published ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 45
+    # Intel macOS replays the native kernel from source before validating the archive.
+    timeout-minutes: ${{ matrix.target == 'x86_64-apple-darwin' && 90 || 45 }}
     strategy:
       fail-fast: false
       matrix:

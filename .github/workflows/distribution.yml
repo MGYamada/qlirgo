@@ -14,7 +14,8 @@ jobs:
   binary:
     name: ${{ matrix.target }} / Rust 1.85.0
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 45
+    # Intel macOS replays the native kernel from source before validating the archive.
+    timeout-minutes: ${{ matrix.target == 'x86_64-apple-darwin' && 90 || 45 }}
     strategy:
       fail-fast: false
       matrix:
