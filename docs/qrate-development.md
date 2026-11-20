@@ -114,7 +114,8 @@ Native build records bind the actual Rust installation, compiler/helper binaries
 native SDK/header/library inventories, selected commands, admitted environment,
 each stage's dependency build outputs and Rust dep-info, and separate executable
 digests. Linux records also capture Cargo's system CA and Git configuration inputs,
-transparent-hugepage setting and applicable cgroup CPU limits. Fresh homes and
+the transparent-hugepage setting, online CPU list and applicable cgroup CPU limits.
+They capture the uutils English locale file used by mkfifo when present. Fresh homes and
 explicit Git configuration variables isolate user configuration; Cargo's linked
 Git library can still inspect the captured system file. They are developer
 observations, not publisher authentication,
