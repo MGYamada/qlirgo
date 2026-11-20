@@ -69,6 +69,28 @@ fn qmatch_retains_imports_in_named_and_composed_arms() {
 }
 
 #[test]
+fn qmatch_specialization_visits_ordered_arguments_and_preserves_warning_span() {
+    let source = "#![no_implicit_prelude]
+        use gates::{plain, first, second, sequence};
+        unitary fn apply(s:Q<Bit>,q:Q<Bit>)->(Q<Bit>,Q<Bit>){
+            qmatch(s,q){0=>plain,1=>sequence[first,power(second, 1)]}
+        }";
+    let gates = "#![no_implicit_prelude]
+        pub unitary fn plain(q:Q<Bit>)->Q<Bit>{q}
+        pub unitary fn first(q:Q<Bit>)->Q<Bit>{h(q)}
+        pub unitary fn second(q:Q<Bit>)->Q<Bit>{h(q)}
+        pub unitary fn sequence[const A:Op<Bit>,const B:Op<Bit>](q:Q<Bit>)->Q<Bit>
+            requires Applicable(A), Applicable(B){B(A(q))}";
+    let report = lint(&[("main.qli", source), ("gates.qli", gates)], false);
+    let diagnostics = warnings(&report);
+    assert_eq!(diagnostics.len(), 1);
+    assert_eq!(diagnostics[0].id, "redundant_repeat_one");
+    let primary = diagnostics[0].primary.as_ref().unwrap();
+    assert_eq!(primary.path, "main.qli");
+    assert_eq!(&source[primary.start..primary.end], "power(second, 1)");
+}
+
+#[test]
 fn coherent_blocks_retain_imports_used_only_inside_an_arm() {
     let gates = "pub unitary fn flip(q:Q<Bit>)->Q<Bit>{h(q)}";
     for selection in ["qif", "qmatch"] {
