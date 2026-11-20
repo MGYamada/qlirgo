@@ -12,10 +12,12 @@ import stat
 import subprocess
 import tomllib
 
+from qleisli_dependency import EXPECTED, complete_qleisli_vendor, dependency_root
+
 QRATES = ("qlinties", "qlifmt", "qlidoc")
 SUPPORT = ("manifest", "adapter", "executable", "publication", "report", "snapshot", "source")
 EXCLUDED = {"target", ".git", "__pycache__", ".DS_Store"}
-SCRIPTS = ("qrate_project.py", "verify_qrate.py", "capture_build.py")
+SCRIPTS = ("qleisli_dependency.py", "qrate_project.py", "verify_qrate.py", "capture_build.py")
 CONFIG_NAMES = (".cargo/config", ".cargo/config.toml", "rust-toolchain", "rust-toolchain.toml")
 
 
@@ -256,9 +258,14 @@ def extract(source, destination, component, cargo):
         require((source / label).is_file() and not (source / label).is_symlink(), "Missing extraction input: " + label)
         shutil.copyfile(source / label, target)
     shutil.copyfile(source / "docs/qrate-development.md", destination / "README.md")
+    component_manifest = destination / "rust" / component / "Cargo.toml"
+    metadata = subprocess.check_output([str(cargo), "metadata", "--frozen", "--format-version=1",
+                                        "--manifest-path", str(component_manifest)], cwd=destination)
+    registry_source = dependency_root(json.loads(metadata), component_manifest)
     subprocess.run([str(cargo), "vendor", "--offline", "--locked", "--versioned-dirs",
-                    "--manifest-path", str(destination / "rust" / component / "Cargo.toml"),
+                    "--manifest-path", str(component_manifest),
                     str(destination / "vendor")], check=True, stdout=subprocess.DEVNULL, cwd=destination)
+    complete_qleisli_vendor(destination / "vendor" / ("qleisli-" + EXPECTED), registry_source, component_manifest)
     for name in closure(component):
         config = destination / "rust" / name / ".cargo/config.toml"
         config.parent.mkdir()

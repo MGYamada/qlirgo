@@ -10,7 +10,7 @@ import tomllib
 import unittest
 from unittest.mock import patch
 
-from qleisli_dependency import dependency_root, main, package_files, same_packaged_source
+from qleisli_dependency import complete_qleisli_vendor, dependency_root, main, package_files, same_packaged_source
 
 
 class DependencyAssociationTests(unittest.TestCase):
@@ -153,6 +153,20 @@ class DependencyAssociationTests(unittest.TestCase):
         self.checksums = {label: row["sha256"] for label, row in package_files(self.source).items()}
         (self.source / ".cargo-checksum.json").write_text(json.dumps({"package": checksum, "files": self.checksums}))
         return reference, other_manifest
+
+    def test_complete_vendor_includes_omitted_git_metadata_before_snapshot(self):
+        reference, other_manifest = self.paired_source()
+        index = self.source / ".cargo-checksum.json"
+        record = json.loads(index.read_bytes())
+        record["$comment"] = "Cargo informational metadata"
+        index.write_text(json.dumps(record))
+        (reference / ".gitattributes").write_bytes(b"*.qli text\n")
+        (reference / "stdlib/.gitignore").write_bytes(b"target/\n")
+        complete_qleisli_vendor(self.source, reference, self.manifest)
+        self.assertEqual(same_packaged_source(self.source, reference, self.manifest, other_manifest), self.source)
+        (reference / "missing.lean").write_text("unlisted source")
+        with self.assertRaisesRegex(RuntimeError, "unexpected registry file"):
+            complete_qleisli_vendor(self.source, reference, self.manifest)
 
     def test_complete_vendor_and_registry_payloads_bind_bytes_modes_and_both_locks(self):
         reference, other_manifest = self.paired_source()

@@ -60,7 +60,7 @@ jobs:
       - name: Build and audit the explicitly associated native checker
         shell: bash
         run: |
-          python3 "$QLEISLI_SOURCE_ROOT/scripts/package_lean_kernel.py" --validation full --output "$RUNNER_TEMP/qlirgo-native-kernel"
+          python3 -B "$QLEISLI_SOURCE_ROOT/scripts/package_lean_kernel.py" --validation full --output "$RUNNER_TEMP/qlirgo-native-kernel"
           printf 'QLEISLI_KERNEL=%s\n' "$RUNNER_TEMP/qlirgo-native-kernel/bin/qleisli-kernel" >> "$GITHUB_ENV"
       - name: Verify without access to the original repository
         shell: bash
