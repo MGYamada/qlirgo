@@ -164,6 +164,15 @@ and exclusion of `qmatch` function bodies from generated signatures. The local
 2026-10-25 checks below exercise this migration. Passing these tests does not
 enable nominal source execution or add a qlippy rule.
 
+## Published beta dependency
+
+The bundle and the three independent Rust projects lock the crates.io package
+`qleisli 0.3.0-beta` with SHA-256
+`a314cd166b33085c641ced70db9431dd7d0acfee6f8a4623992de99d2fbe3b6c`.
+The [upstream prerelease](https://github.com/MGYamada/Qleisli/releases/tag/v0.3.0-beta)
+identifies source commit `ce71d151427af30f9fffe8d967524b905265701f`.
+The source-override observations below predate this registry lock.
+
 ## Validation status
 
 [Retained development observations](../tests/fixtures/qleisli-beta-compat/index.json)
