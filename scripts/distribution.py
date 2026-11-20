@@ -11,7 +11,7 @@ import tarfile
 import tempfile
 
 from verify_release import PRODUCT_VERSION, TOOLS, require, verify
-from release_version import qrate_version
+from release_version import is_beta, qrate_version
 
 
 TARGETS = (
@@ -156,8 +156,9 @@ def verify_archive(source_root, archive_path, target, qleisli_source_root=None):
             result = fixture.run("--version", PRODUCT_VERSION)
             require(result.returncode == 0, "Installer failed: " + result.stderr)
             verify(source_root, fixture.prefix / "bin", qleisli_source_root)
-            repeated = fixture.run()
-            require(repeated.returncode == 0, "Repeated/latest installation failed: " + repeated.stderr)
+            repeat_args = ("--version", PRODUCT_VERSION) if is_beta(PRODUCT_VERSION) else ()
+            repeated = fixture.run(*repeat_args)
+            require(repeated.returncode == 0, "Repeated installation failed: " + repeated.stderr)
             require(not fixture.marker.exists(), "Installer invoked a developer tool or Python/jq")
             require((fixture.prefix / "lib/qlirgo/current").readlink().as_posix()
                     == "releases/" + bundle_name(target), "Incorrect installed bundle link")

@@ -8,10 +8,11 @@ import struct
 import tarfile
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import call, patch
 
 from distribution import (TARGETS, archive_files, binary_platform, build, bundle_name,
                           collect, main, verify_archive, verify_published_assets)
+from release_version import is_beta
 from verify_release import PRODUCT_VERSION, TOOLS
 
 
@@ -108,10 +109,12 @@ class DistributionTests(unittest.TestCase):
         fixture.run.return_value.stderr = ""
         with patch("distribution.verify") as verifier, patch("test_install.InstallerFixture", return_value=fixture):
             verify_archive(self.source, archive, TARGETS[0], self.qleisli_source)
+            pinned = call("--version", PRODUCT_VERSION)
+            self.assertEqual(fixture.run.call_args_list, [pinned, pinned if is_beta(PRODUCT_VERSION) else call()])
             self.assertEqual(verifier.call_count, 2)
-            for call in verifier.call_args_list:
-                self.assertEqual(call.args[0], self.source)
-                self.assertEqual(call.args[2], self.qleisli_source)
+            for invocation in verifier.call_args_list:
+                self.assertEqual(invocation.args[0], self.source)
+                self.assertEqual(invocation.args[2], self.qleisli_source)
             self.assertEqual(verifier.call_args_list[1].args[1], fixture.prefix / "bin")
 
     def test_all_target_headers_and_cpu_rejection(self):
