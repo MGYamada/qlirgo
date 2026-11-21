@@ -76,6 +76,8 @@ pub fn collect_tree(root: &Path, extension: Option<&str>) -> Result<Files, Diagn
 
 #[cfg(unix)]
 pub use anchored::InputDirectory;
+#[cfg(unix)]
+pub(crate) use anchored::still_named;
 
 #[cfg(not(unix))]
 #[derive(Clone)]
@@ -156,7 +158,7 @@ mod anchored {
     use std::path::Path;
     use std::sync::Arc;
 
-    use rustix::fd::OwnedFd;
+    use rustix::fd::{AsFd, OwnedFd};
     use rustix::fs::{self, AtFlags, Dir, FileType, Mode, OFlags, Stat};
 
     use super::{
@@ -187,6 +189,16 @@ mod anchored {
         a.st_dev == b.st_dev
             && a.st_ino == b.st_ino
             && FileType::from_raw_mode(a.st_mode) == FileType::from_raw_mode(b.st_mode)
+    }
+
+    /// Compare a directory entry itself with the object retained by its caller.
+    pub(crate) fn still_named(
+        parent: &impl AsFd,
+        name: &OsStr,
+        held: &impl AsFd,
+    ) -> std::io::Result<bool> {
+        let named = fs::statat(parent, name, AtFlags::SYMLINK_NOFOLLOW)?;
+        Ok(same_object(&named, &fs::fstat(held)?))
     }
 
     fn unchanged_file(a: &Stat, b: &Stat) -> bool {

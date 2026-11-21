@@ -5,7 +5,10 @@ Publication of the tool bundle is pending its own release gates. This beta is no
 
 - Rename the functional qargo and qlippy commands to qlirgo and qlinties. The bundle
   installs qlirgo, qlinties, qlifmt and qlidoc at 0.2.0-beta. Bundled qrates remain
-  ordinary independent qrates at base version 0.2.0.
+  ordinary independent qrates at base version 0.2.0. Each tool can build and run
+  from its own qrate, Rust workspace and the neutral support sources.
+- The formatter stages output in an owner-only directory. It checks the identity
+  of staged files before replacing sources and before cleaning up temporary entries.
 - JSON uses qlirgo.result and qlirgo.build-record version 2, qlinties.result version 1;
   qlifmt/qlidoc stay version 1. Artifact/install namespaces use qlirgo. Old command
   options, selected-tool responses and JSON names are not aliases.
@@ -19,6 +22,9 @@ Publication of the tool bundle is pending its own release gates. This beta is no
   to 0.3.0 stable. Nonempty check/build/lint require the matching native checker
   from Qleisli, explicitly selected by absolute QLEISLI_KERNEL. The qlirgo archive
   does not install that checker. fmt/doc remain syntax-only; QLT is unavailable.
+
+The native bundles target Linux x86_64 and macOS x86_64 and ARM64. Ordinary
+checking on Linux ARM64 still fails with the published beta loader. [Issue #18](https://github.com/MGYamada/qlirgo/issues/18)
 
 After publication, install this exact beta into a separate prefix:
 

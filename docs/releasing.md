@@ -6,9 +6,9 @@ Prepare qlirgo 0.2.0-beta first, followed by 0.2.0 only after the approved exact
 Qleisli 0.3.0 stable migration and complete revalidation. Follow-up betas use
 0.2.0-beta.1, beta.2, and so on; published versions/tags/assets are immutable.
 
-Root Cargo [package].version is the release authority. The root package,
-independent private Rust engines and their exact support dependency use the
-complete version 0.2.0-beta. The three bundled qrates keep literal base version
+Root Cargo [package].version is the release authority. The root package
+and three independent private Rust engines use the complete version 0.2.0-beta.
+Each engine compiles the neutral support modules from its own source inventory. The three bundled qrates keep literal base version
 0.2.0 by the selected bundle policy. Schema-2 qrate manifests also support
 prerelease versions for independently versioned qrates; this does not implicitly
 change bundled declarations. scripts/release_version.py
@@ -24,9 +24,9 @@ Rust edition 2024, MSRV 1.85 and unsafe prohibition remain required.
 
 ## Beta publication gates
 
-1. Repair worktree references after the local repository folder move and preserve
-   the primary uncommitted diff and legacy release branch. Prepare the version,
-   lockfiles, release notes and docs, then commit the complete candidate.
+1. Start from the merged beta implementation, review the version, lockfiles,
+   release notes and open issues, and record the exact candidate commit. Track
+   its workflow runs and artifact checksums in [issue #40](https://github.com/MGYamada/qlirgo/issues/40).
 2. Require the official exact registry dependency and registry-resolved root and
    component lockfiles. Bind its actual source and associated native checker.
    Pass formatting, tests/doctests, strict Clippy and Rustdoc for the bundle and

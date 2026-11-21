@@ -2,6 +2,8 @@
 
 ## qlirgo 0.2.0-beta — Unreleased
 
+- Keep each staged formatter file open and recheck its identity before replacement or cleanup (#31).
+
 - Make qlinties, qlifmt and qlidoc independently extractable and executable. Each Rust workspace builds its own engine with the neutral sources in `tool-support/`.
 - Preserve nominal member documentation, coherent match arm order, and lint traversal of arm operations and blocks.
 - Accept qrate prerelease versions such as 0.2.0-beta, 0.3.0-alpha and 1.0.0-rc.1 with SemVer prerelease identifier syntax. Preserve their exact bytes/identity/build metadata; reject empty identifiers and leading-zero numeric identifiers.

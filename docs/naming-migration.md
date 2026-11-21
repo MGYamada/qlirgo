@@ -85,13 +85,11 @@ Historical records and fixed fixtures keep their original names and bytes.
 
 ## Validation
 
-Completed local checks are recorded in [naming-validation.json](naming-validation.json):
-189 root tests and all component quality checks pass on Rust 1.85 and stable;
-the fresh developer installation passes actual-checker runtime verification. Registry packaging/install/publish validation, full
-independent extraction Linux/macOS × Rust 1.85/stable and supported-platform
-binary release checks remain release gates. Publication requires the separate beta gates in releasing.md. The previous local
-verification record retains its original 0.2.0 source window; it does not certify
-this version-preparation change or registry availability.
+The [October rename checks](naming-validation.json) and [October beta preparation](beta-release-validation.json)
+record local source-override builds. The registry dependency became available in November.
+The merged rename and tool separation passed [bundle and package CI](https://github.com/MGYamada/qlirgo/actions/runs/44842588493)
+and the [three-tool extraction matrix](https://github.com/MGYamada/qlirgo/actions/runs/44842047553).
+The source trees tested in those runs are identical to [the merged source tree](https://github.com/MGYamada/qlirgo/tree/d058e041a332521a3da0f0625b2899c759247e60).
 
-The current 0.2.0-beta preparation and its remaining publication gates are recorded
-in [beta-release-validation.json](beta-release-validation.json).
+Use the [release checklist](releasing.md) for each publication candidate.
+[Issue #40](https://github.com/MGYamada/qlirgo/issues/40) tracks candidate commits, validation and the stable migration.
