@@ -65,6 +65,120 @@ pub fn apply_captured(
 }
 
 #[cfg(unix)]
+struct StageDirectory {
+    parent: std::fs::File,
+    directory: std::fs::File,
+    name: String,
+}
+
+#[cfg(unix)]
+impl StageDirectory {
+    fn create(parent: std::fs::File) -> std::io::Result<Self> {
+        use rustix::fs::{Mode, OFlags, fstat, mkdirat, openat};
+        use std::sync::atomic::{AtomicU64, Ordering};
+
+        static SERIAL: AtomicU64 = AtomicU64::new(0);
+        let name = format!(
+            ".qlifmt-{}-{}.tmp",
+            std::process::id(),
+            SERIAL.fetch_add(1, Ordering::Relaxed)
+        );
+        mkdirat(&parent, name.as_str(), Mode::RWXU)?;
+        let directory = std::fs::File::from(openat(
+            &parent,
+            name.as_str(),
+            OFlags::RDONLY | OFlags::DIRECTORY | OFlags::NOFOLLOW | OFlags::CLOEXEC,
+            Mode::empty(),
+        )?);
+        let stat = fstat(&directory)?;
+        if stat.st_uid != rustix::process::geteuid().as_raw() || stat.st_mode & 0o077 != 0 {
+            return Err(std::io::Error::other(
+                "Formatter staging requires an owner-only directory.",
+            ));
+        }
+        Ok(Self {
+            parent,
+            directory,
+            name,
+        })
+    }
+
+    fn still_named(&self) -> std::io::Result<bool> {
+        crate::support::snapshot::still_named(&self.parent, self.name.as_ref(), &self.directory)
+    }
+}
+
+#[cfg(unix)]
+impl Drop for StageDirectory {
+    fn drop(&mut self) {
+        if self.still_named().unwrap_or(false) {
+            let _ = rustix::fs::unlinkat(
+                &self.parent,
+                self.name.as_str(),
+                rustix::fs::AtFlags::REMOVEDIR,
+            );
+        }
+    }
+}
+
+#[cfg(unix)]
+struct Staged {
+    stage: std::rc::Rc<StageDirectory>,
+    output: std::fs::File,
+    temporary: String,
+    name: String,
+    label: String,
+    installed: bool,
+}
+
+#[cfg(unix)]
+impl Staged {
+    fn still_named(&self) -> std::io::Result<bool> {
+        crate::support::snapshot::still_named(
+            &self.stage.directory,
+            self.temporary.as_ref(),
+            &self.output,
+        )
+    }
+
+    fn install(&mut self) -> Result<(), Diagnostic> {
+        if !self
+            .stage
+            .still_named()
+            .map_err(|error| io_error(&self.label, error))?
+            || !self
+                .still_named()
+                .map_err(|error| io_error(&self.label, error))?
+        {
+            return Err(io_error(&self.label, "Staged file identity changed."));
+        }
+        // Resolve the candidate inside the held private directory throughout the rename.
+        rustix::fs::renameat(
+            &self.stage.directory,
+            self.temporary.as_str(),
+            &self.stage.parent,
+            self.name.as_str(),
+        )
+        .map_err(|error| io_error(&self.label, error))?;
+        self.installed = true;
+        Ok(())
+    }
+}
+
+#[cfg(unix)]
+impl Drop for Staged {
+    fn drop(&mut self) {
+        if !self.installed && self.still_named().unwrap_or(false) {
+            let _ = rustix::fs::unlinkat(
+                &self.stage.directory,
+                self.temporary.as_str(),
+                rustix::fs::AtFlags::empty(),
+            );
+        }
+    }
+}
+
+#[cfg(unix)]
 fn apply(
     root: &InputDirectory,
     original: &Files,
@@ -80,13 +194,14 @@ fn apply_with_hook(
     formatted: &Files,
     mut before_replace: impl FnMut(&str, usize),
 ) -> Result<Vec<String>, ApplyFailure> {
+    use std::collections::BTreeMap;
+    use std::collections::btree_map::Entry;
     use std::fs::File;
     use std::io::{Read, Write};
-    use std::sync::atomic::{AtomicU64, Ordering};
+    use std::rc::Rc;
 
-    use rustix::fs::{AtFlags, Mode, OFlags, fstat, openat, renameat, unlinkat};
+    use rustix::fs::{Mode, OFlags, fstat, openat};
 
-    static SERIAL: AtomicU64 = AtomicU64::new(0);
     let directory_flags = OFlags::RDONLY | OFlags::DIRECTORY | OFlags::NOFOLLOW | OFlags::CLOEXEC;
     let root_file = root.held_file().map_err(|error| failure(error, &[]))?;
 
@@ -128,20 +243,6 @@ fn apply_with_hook(
         Ok(bytes)
     }
 
-    struct Staged {
-        parent: File,
-        temporary: Option<String>,
-        name: String,
-        label: String,
-    }
-    impl Drop for Staged {
-        fn drop(&mut self) {
-            if let Some(name) = &self.temporary {
-                let _ = unlinkat(&self.parent, name, AtFlags::empty());
-            }
-        }
-    }
-
     // All selected source paths are checked, including files with no changes.
     for (label, expected) in original {
         let (directory, name) =
@@ -150,6 +251,7 @@ fn apply_with_hook(
             return Err(failure(changed(label), &[]));
         }
     }
+    let mut directories = BTreeMap::new();
     let mut staged = Vec::new();
     for label in changed_files(original, formatted) {
         let (directory, name) =
@@ -173,29 +275,39 @@ fn apply_with_hook(
             ));
         }
         let permissions = metadata.permissions();
-        let temporary = format!(
-            ".qlifmt-{}-{}.tmp",
-            std::process::id(),
-            SERIAL.fetch_add(1, Ordering::Relaxed)
-        );
+        let parent_label = Path::new(&label)
+            .parent()
+            .expect("source filename")
+            .to_owned();
+        let stage = match directories.entry(parent_label) {
+            Entry::Vacant(entry) => {
+                let directory = StageDirectory::create(directory)
+                    .map_err(|error| failure(io_error(&label, error), &[]))?;
+                entry.insert(Rc::new(directory))
+            }
+            Entry::Occupied(entry) => entry.into_mut(),
+        };
+        let temporary = format!("{}.tmp", staged.len());
         let fd = openat(
-            &directory,
+            &stage.directory,
             temporary.as_str(),
             OFlags::WRONLY | OFlags::CREATE | OFlags::EXCL | OFlags::NOFOLLOW | OFlags::CLOEXEC,
             Mode::RUSR | Mode::WUSR,
         )
         .map_err(|error| failure(io_error(&label, error), &[]))?;
-        let candidate = Staged {
-            parent: directory,
-            temporary: Some(temporary),
+        let mut candidate = Staged {
+            stage: Rc::clone(stage),
+            output: File::from(fd),
+            temporary,
+            installed: false,
             name,
             label,
         };
-        let mut output = File::from(fd);
-        output
+        candidate
+            .output
             .write_all(&formatted[&candidate.label])
-            .and_then(|()| output.set_permissions(permissions))
-            .and_then(|()| output.sync_all())
+            .and_then(|()| candidate.output.set_permissions(permissions))
+            .and_then(|()| candidate.output.sync_all())
             .map_err(|error| failure(io_error(&candidate.label, error), &[]))?;
         staged.push(candidate);
     }
@@ -205,27 +317,22 @@ fn apply_with_hook(
         root.verify().map_err(|error| failure(error, &updated))?;
         let (fresh_parent, _) = parent(&root_file, &candidate.label, directory_flags)
             .map_err(|error| failure(error, &updated))?;
-        let old_parent = fstat(&candidate.parent)
+        let old_parent = fstat(&candidate.stage.parent)
             .map_err(|error| failure(io_error(&candidate.label, error), &updated))?;
         let new_parent = fstat(&fresh_parent)
             .map_err(|error| failure(io_error(&candidate.label, error), &updated))?;
         if old_parent.st_dev != new_parent.st_dev || old_parent.st_ino != new_parent.st_ino {
             return Err(failure(changed(&candidate.label), &updated));
         }
-        if current(&candidate.parent, &candidate.name, &candidate.label)
+        if current(&candidate.stage.parent, &candidate.name, &candidate.label)
             .map_err(|error| failure(error, &updated))?
             != original[&candidate.label]
         {
             return Err(failure(changed(&candidate.label), &updated));
         }
-        renameat(
-            &candidate.parent,
-            candidate.temporary.as_deref().expect("staged file"),
-            &candidate.parent,
-            candidate.name.as_str(),
-        )
-        .map_err(|error| failure(io_error(&candidate.label, error), &updated))?;
-        candidate.temporary = None;
+        candidate
+            .install()
+            .map_err(|error| failure(error, &updated))?;
         updated.push(candidate.label.clone());
     }
     Ok(updated)
@@ -235,6 +342,73 @@ fn apply_with_hook(
 mod tests {
     use super::super::format_files;
     use super::*;
+
+    #[test]
+    fn mismatched_staging_entries_are_neither_installed_nor_cleaned_up() {
+        use std::fs::{self, File};
+        use std::os::unix::fs::symlink;
+
+        let directory = tempfile::tempdir().unwrap();
+        let root = directory.path();
+        let stage = std::rc::Rc::new(StageDirectory::create(File::open(root).unwrap()).unwrap());
+        let staging = root.join(&stage.name);
+        fs::write(staging.join("held"), b"formatted").unwrap();
+        fs::write(staging.join("other"), b"formatted").unwrap();
+        symlink("held", staging.join("link")).unwrap();
+        for name in ["other", "link", "absent"] {
+            fs::write(root.join(name), b"original").unwrap();
+            let mut staged = Staged {
+                stage: stage.clone(),
+                output: File::open(staging.join("held")).unwrap(),
+                temporary: name.to_owned(),
+                name: name.to_owned(),
+                label: name.to_owned(),
+                installed: false,
+            };
+            assert_eq!(staged.install().unwrap_err().id, "format_write");
+            drop(staged);
+            assert_eq!(fs::read(root.join(name)).unwrap(), b"original");
+            assert_eq!(fs::read(staging.join("other")).unwrap(), b"formatted");
+            assert_eq!(
+                fs::read_link(staging.join("link")).unwrap(),
+                Path::new("held")
+            );
+            assert!(!staging.join("absent").exists());
+        }
+    }
+
+    #[test]
+    fn a_different_empty_directory_is_preserved_during_staging_cleanup() {
+        use std::fs::{self, File};
+        let home = tempfile::tempdir().unwrap();
+        let root = home.path();
+        fs::create_dir(root.join("held")).unwrap();
+        fs::create_dir(root.join("other")).unwrap();
+        let stage = StageDirectory {
+            parent: File::open(root).unwrap(),
+            directory: File::open(root.join("held")).unwrap(),
+            name: "other".to_owned(),
+        };
+        assert!(!stage.still_named().unwrap());
+        drop(stage);
+        assert!(root.join("other").is_dir());
+    }
+
+    #[test]
+    fn staged_candidates_are_excluded_from_source_discovery() {
+        let home = tempfile::tempdir().unwrap();
+        let source = b"pub unitary fn identity(q:Q<Bit>)->Q<Bit>{q}";
+        std::fs::write(home.path().join("module.qli"), source).unwrap();
+        let root = InputDirectory::open(home.path()).unwrap();
+        let original = root.collect(Some("qli")).unwrap();
+        let formatted = format_files(&original).unwrap();
+        let updated = apply_with_hook(&root, &original, &formatted, |_, _| {
+            assert_eq!(root.collect(Some("qli")).unwrap(), original);
+        })
+        .unwrap();
+        assert_eq!(updated, ["module.qli"]);
+        assert_eq!(std::fs::read_dir(home.path()).unwrap().count(), 1);
+    }
 
     #[test]
     fn byte_identical_directory_replacement_is_rejected_before_any_write() {

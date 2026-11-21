@@ -135,7 +135,7 @@ mod unix {
     use rustix::fs::{self, AtFlags, Dir, FileType, Mode, OFlags, RenameFlags};
 
     use super::{PublicationError, absolute_normalized, artifact_label, output_error};
-    use crate::support::snapshot::{Files, InputDirectory};
+    use crate::support::snapshot::{Files, InputDirectory, still_named};
 
     fn directory_flags() -> OFlags {
         OFlags::RDONLY | OFlags::DIRECTORY | OFlags::NOFOLLOW | OFlags::CLOEXEC
@@ -195,14 +195,6 @@ mod unix {
         let left = fs::fstat(left)?;
         let right = fs::fstat(right)?;
         Ok(left.st_dev == right.st_dev && left.st_ino == right.st_ino)
-    }
-
-    fn still_named(parent: &impl AsFd, name: &OsStr, held: &impl AsFd) -> io::Result<bool> {
-        let named = fs::statat(parent, name, AtFlags::SYMLINK_NOFOLLOW)?;
-        let held = fs::fstat(held)?;
-        Ok(named.st_dev == held.st_dev
-            && named.st_ino == held.st_ino
-            && FileType::from_raw_mode(named.st_mode) == FileType::from_raw_mode(held.st_mode))
     }
 
     fn validate_parent(
