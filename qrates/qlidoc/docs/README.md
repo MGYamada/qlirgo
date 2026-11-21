@@ -1,9 +1,9 @@
 # qlidoc
 
-qlidoc 0.1.9 generates descriptive Markdown from Qleisli source syntax. It is
-one of the three standard qargo qrates, alongside qlippy and qlifmt. Its Rust
+qlidoc 0.2.0-beta generates descriptive Markdown from Qleisli source syntax. It is
+one of the three standard qlirgo qrates, alongside qlinties and qlifmt. Its Rust
 engine, CLI and Rust tests are qrate inputs; Cargo configuration remains
-outside this qrate. Qargo never runs Cargo or Rustdoc.
+outside this qrate. Qlirgo never runs Cargo or Rustdoc.
 
 ```text
 qlidoc <file-or-source-root> [--output=PATH] [--document-private-items] [--format=json]
@@ -46,5 +46,5 @@ style design are deferred beyond this Markdown implementation.
 
 Rust development uses the independent `rust/qlidoc/` Cargo workspace with its
 own manifest, lockfile and Rust toolchain declaration. Transfer that directory
-and this qrate together; see [independent development](../../../docs/qrate-development.md)
+together with this qrate and the neutral `tool-support/` sources; see [independent development](../../../docs/qrate-development.md)
 for extraction, dependency capture and verification without the original checkout.

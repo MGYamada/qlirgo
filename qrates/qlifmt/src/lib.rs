@@ -3,13 +3,15 @@
 mod apply;
 mod formatter;
 
+pub use crate::support;
+
 use std::ffi::OsString;
 use std::path::PathBuf;
 
-use qlippy_engine::support::report::{Diagnostic, Report, tool_info};
-use qlippy_engine::support::snapshot::digest_files;
-use qlippy_engine::support::source::{capture_source, syntax_step};
 use serde_json::json;
+use support::report::{Diagnostic, Report, tool_info};
+use support::snapshot::digest_files;
+use support::source::{capture_source, syntax_step};
 
 pub use apply::{ApplyFailure, apply_captured, apply_files};
 pub use formatter::{changed_files, diff, format_files, validate_formatted};
@@ -127,7 +129,7 @@ pub fn run(args: &[OsString]) -> Report {
             report,
             Diagnostic::error(
                 "formatting_required",
-                "qargo",
+                "qlirgo",
                 "Source formatting is required; rerun without --check to apply changes.",
             ),
         );
@@ -141,7 +143,7 @@ pub fn run(args: &[OsString]) -> Report {
                         report,
                         Diagnostic::error(
                             "source_changed",
-                            "qargo",
+                            "qlirgo",
                             "Source file set or bytes changed after capture.",
                         ),
                     );
@@ -168,7 +170,7 @@ fn bound_failure(mut report: Report, diagnostic: Diagnostic) -> Report {
 }
 
 fn error(message: impl Into<String>) -> Diagnostic {
-    Diagnostic::error("format_validation", "qargo", message)
+    Diagnostic::error("format_validation", "qlirgo", message)
 }
 
 fn source_text<'a>(label: &str, bytes: &'a [u8]) -> Result<&'a str, Diagnostic> {

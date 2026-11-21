@@ -1,2 +1,2 @@
-use qargo_tools as qlippy_engine;
-include!("../qrates/qlippy/tests/snapshot.rs");
+use qlirgo_tools::qlinties_engine;
+include!("../qrates/qlinties/tests/snapshot.rs");

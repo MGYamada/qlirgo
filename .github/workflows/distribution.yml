@@ -14,7 +14,8 @@ jobs:
   binary:
     name: ${{ matrix.target }} / Rust 1.85.0
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 45
+    # Intel macOS replays the native kernel from source before validating the archive.
+    timeout-minutes: ${{ matrix.target == 'x86_64-apple-darwin' && 90 || 45 }}
     strategy:
       fail-fast: false
       matrix:
@@ -23,7 +24,7 @@ jobs:
             target: x86_64-unknown-linux-musl
           - os: macos-15-intel
             target: x86_64-apple-darwin
-          - os: macos-14
+          - os: macos-15
             target: aarch64-apple-darwin
     env:
       MACOSX_DEPLOYMENT_TARGET: "11.0"
@@ -40,19 +41,47 @@ jobs:
             export CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=musl-gcc
             printf '%s\n' 'CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=musl-gcc' >> "$GITHUB_ENV"
           fi
-      - name: Build and verify the candidate source archive
+      - name: Capture the candidate source and actual registry dependency
         shell: bash
         run: |
-          release_source_dir="$RUNNER_TEMP/qargo-source"
+          release_source_dir="$RUNNER_TEMP/qlirgo-source"
           mkdir -p "$release_source_dir"
           git archive --format=tar HEAD | tar -x -C "$release_source_dir"
           cargo +1.85.0 fetch --locked --manifest-path="$release_source_dir/Cargo.toml"
+          cargo +1.85.0 metadata --frozen --format-version=1 --manifest-path="$release_source_dir/Cargo.toml" > "$RUNNER_TEMP/distribution-dependencies.json"
+          qleisli_source_root="$(python3 scripts/qleisli_dependency.py --metadata="$RUNNER_TEMP/distribution-dependencies.json" --manifest-path="$release_source_dir/Cargo.toml")"
+          printf 'QLEISLI_SOURCE_ROOT=%s\n' "$qleisli_source_root" >> "$GITHUB_ENV"
+      - name: Prepare the linked Qleisli beta kernel
+        uses: ./.github/actions/beta-kernel
+      - name: Build and verify the candidate source archive
+        # Integration tests repeatedly hash and execute the real bundle binaries.
+        env:
+          CARGO_PROFILE_TEST_DEBUG: "0"
+          CARGO_PROFILE_TEST_OPT_LEVEL: "1"
+        shell: bash
+        run: |
+          release_source_dir="$RUNNER_TEMP/qlirgo-source"
+          release_version=$(python3 -c 'import tomllib; print(tomllib.load(open("Cargo.toml", "rb"))["package"]["version"])')
           cargo +1.85.0 test --frozen --workspace --all-targets --target='${{ matrix.target }}' --manifest-path="$release_source_dir/Cargo.toml"
           cargo +1.85.0 build --release --frozen --bins --target='${{ matrix.target }}' --manifest-path="$release_source_dir/Cargo.toml"
           python3 "$release_source_dir/scripts/test_install.py"
           python3 "$release_source_dir/scripts/test_distribution.py"
-          python3 "$release_source_dir/scripts/distribution.py" build --source-root="$release_source_dir" --bin-dir="$release_source_dir/target/${{ matrix.target }}/release" --target='${{ matrix.target }}' --output-dir="$RUNNER_TEMP/binary-assets"
-          python3 "$release_source_dir/scripts/distribution.py" verify --source-root="$release_source_dir" --archive="$RUNNER_TEMP/binary-assets/qargo-0.1.9-${{ matrix.target }}.tar.gz" --target='${{ matrix.target }}'
+          python3 "$release_source_dir/scripts/test_qleisli_dependency.py"
+          cargo +1.85.0 metadata --frozen --format-version=1 --manifest-path="$release_source_dir/Cargo.toml" > "$RUNNER_TEMP/distribution-built-dependencies.json"
+          python3 scripts/qleisli_dependency.py --metadata="$RUNNER_TEMP/distribution-built-dependencies.json" --manifest-path="$release_source_dir/Cargo.toml" --require-source-root="$QLEISLI_SOURCE_ROOT"
+          python3 "$release_source_dir/scripts/distribution.py" build --source-root="$release_source_dir" --bin-dir="$release_source_dir/target/${{ matrix.target }}/release" --target='${{ matrix.target }}' --output-dir="$RUNNER_TEMP/binary-assets" --qleisli-source-root="$QLEISLI_SOURCE_ROOT"
+          python3 "$release_source_dir/scripts/distribution.py" verify --source-root="$release_source_dir" --archive="$RUNNER_TEMP/binary-assets/qlirgo-$release_version-${{ matrix.target }}.tar.gz" --target='${{ matrix.target }}' --qleisli-source-root="$QLEISLI_SOURCE_ROOT"
+      # Externally provisioned checking does not deliver a kernel to installed users.
+      # Installed users supply the matching Qleisli native checker explicitly.
+      - name: Retain dependency associations and external native preparation
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        if: always()
+        with:
+          name: linked-native-inputs-${{ matrix.target }}
+          path: |
+            ${{ runner.temp }}/distribution*-dependencies.json
+            ${{ runner.temp }}/beta-kernel/manifest.json
+          if-no-files-found: error
       - name: Record tested environment
         shell: bash
         run: |
@@ -99,11 +128,14 @@ jobs:
         with:
           pattern: binary-*
           path: ${{ runner.temp }}/binary-inputs
+      - name: Read the candidate product version
+        id: release-version
+        run: python3 -c 'import os, tomllib; version = tomllib.load(open("Cargo.toml", "rb"))["package"]["version"]; print("version=" + version, file=open(os.environ["GITHUB_OUTPUT"], "a"))'
       - name: Validate and assemble all three supported targets
         run: python3 scripts/distribution.py collect --artifact-dir="$RUNNER_TEMP/binary-inputs" --output-dir="$RUNNER_TEMP/release-assets"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: qargo-0.1.9-release-assets
+          name: qlirgo-${{ steps.release-version.outputs.version }}-release-assets
           path: ${{ runner.temp }}/release-assets/*
           if-no-files-found: error
           compression-level: 0

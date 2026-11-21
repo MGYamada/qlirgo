@@ -8,11 +8,15 @@ from pathlib import Path
 import shutil
 import tempfile
 import unittest
+from types import SimpleNamespace
+from unittest.mock import patch
 
-from capture_build import audit_linux_access, build_binding, external_tree, generated_inputs, linux_resource_inputs
+from capture_build import (audit_linux_access, build_binding, capture_kernel, external_tree,
+                           generated_inputs, linux_resource_inputs, verify_native_unchanged)
 from qrate_project import QRATES, audit, audit_metadata, audit_vendor, copy_tree, extract, sha256, snapshot
-from verify_qrate import isolated_config
+from verify_qrate import compare_entrypoints, isolated_config, require_lint_case
 from verify_release import verify_versions
+from release_version import qrate_version
 
 SOURCE = Path(__file__).resolve().parents[1]
 
@@ -23,11 +27,12 @@ class ProjectBoundaryTests(unittest.TestCase):
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name).resolve() / "project"
         self.root.mkdir()
+        copy_tree(SOURCE / "tool-support", self.root / "tool-support")
         for directory in ("qrates", "rust"):
             for name in QRATES:
                 copy_tree(SOURCE / directory / name, self.root / directory / name)
-        for label in ("Cargo.toml", "src/bin/qlippy.rs", "src/bin/qlifmt.rs", "src/bin/qlidoc.rs",
-                      "tests/qlippy.rs", "tests/qlifmt.rs", "tests/qlidoc.rs", "tests/snapshot.rs"):
+        for label in ("Cargo.toml", "src/bin/qlinties.rs", "src/bin/qlifmt.rs", "src/bin/qlidoc.rs",
+                      "tests/qlinties.rs", "tests/qlifmt.rs", "tests/qlidoc.rs", "tests/snapshot.rs"):
             target = self.root / label
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(SOURCE / label, target)
@@ -36,9 +41,9 @@ class ProjectBoundaryTests(unittest.TestCase):
         return snapshot(self.root, "qlifmt")["project_id"]
 
     def test_extraction_cannot_recursively_capture_its_own_destination(self):
-        destination = self.root / "qrates/qlippy/recursive-copy"
+        destination = self.root / "qrates/qlinties/recursive-copy"
         with self.assertRaisesRegex(RuntimeError, "outside the original checkout"):
-            extract(self.root, destination, "qlippy", Path("unused-cargo"))
+            extract(self.root, destination, "qlinties", Path("unused-cargo"))
         self.assertFalse(destination.exists())
 
     def test_native_configuration_is_captured_and_unrecorded_access_is_rejected(self):
@@ -105,7 +110,7 @@ class ProjectBoundaryTests(unittest.TestCase):
 
     def test_relocation_and_excluded_build_cache_preserve_identity(self):
         before = self.identity()
-        for label in ("target/old.rs", ".git/config", "rust/qlippy/target/binary", "__pycache__/noise.pyc"):
+        for label in ("target/old.rs", ".git/config", "rust/qlinties/target/binary", "__pycache__/noise.pyc"):
             path = self.root / label
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text("not a project input")
@@ -117,9 +122,8 @@ class ProjectBoundaryTests(unittest.TestCase):
         self.assertEqual(before, snapshot(moved, "qlifmt")["project_id"])
 
     def test_every_configuration_dependency_helper_and_generated_input_is_bound(self):
-        labels = [f"rust/{name}/{file}" for name in ("qlippy", "qlifmt")
-                  for file in ("Cargo.toml", "Cargo.lock", "rust-toolchain.toml", ".cargo/config.toml", "build.rs", "helpers/generator.py", "generated/source.rs")]
-        labels += ["qrates/qlippy/src/report.rs", "qrates/qlifmt/src/smoke.qli", "vendor/example/src/lib.rs"]
+        labels = [f"rust/qlifmt/{file}" for file in ("Cargo.toml", "Cargo.lock", "rust-toolchain.toml", ".cargo/config.toml", "build.rs", "helpers/generator.py", "generated/source.rs")]
+        labels += ["tool-support/report.rs", "qrates/qlifmt/src/smoke.qli", "vendor/example/src/lib.rs"]
         for label in labels:
             with self.subTest(label=label):
                 before = self.identity()
@@ -158,28 +162,47 @@ class ProjectBoundaryTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "links/special"):
             self.identity()
 
+    def test_each_tool_audits_without_peer_sources_and_binds_its_shared_inputs(self):
+        for name in QRATES:
+            project = self.root.parent / name
+            for directory in ("qrates", "rust"):
+                copy_tree(self.root / directory / name, project / directory / name)
+            copy_tree(self.root / "tool-support", project / "tool-support")
+            audit(project, (name,), bundle=False)
+            before = snapshot(project, name)
+            self.assertEqual([pkg["name"] for pkg in before["local_packages"]], [name + "-engine"])
+            shared = project / "tool-support/report.rs"
+            shared.write_bytes(shared.read_bytes() + b"\n")
+            self.assertNotEqual(before["local_packages"], snapshot(project, name)["local_packages"])
+            path = project / "rust" / name / "Cargo.toml"
+            peer = next(other for other in QRATES if other != name)
+            with path.open("a") as stream:
+                stream.write(f'\n[build-dependencies]\nalias = {{ package = "{peer}-engine", version = "=0.2.0-beta" }}\n')
+            with self.assertRaisesRegex(RuntimeError, "Tool-to-tool"):
+                audit(project, (name,), bundle=False)
+
     def test_all_declared_dependency_kinds_and_conditional_edges_are_audited(self):
         audit(self.root)
-        path = self.root / "rust/qlippy/Cargo.toml"
+        path = self.root / "rust/qlinties/Cargo.toml"
         original = path.read_text()
         for header in ("dev-dependencies", "build-dependencies", "target.'cfg(target_os = \"none\")'.dependencies"):
-            path.write_text(original + '\n[' + header + ']\nrenamed = { package = "qargo", path = "../..", optional = true }\n')
-            with self.assertRaisesRegex(RuntimeError, "Reverse qargo dependency"):
+            path.write_text(original + '\n[' + header + ']\nrenamed = { package = "qlirgo", path = "../..", optional = true }\n')
+            with self.assertRaisesRegex(RuntimeError, "Reverse qlirgo dependency"):
                 audit(self.root)
         path.write_text(original)
-        path.write_text(original + '\n[target.\'cfg(target_os = "none")\'.dependencies]\nqargo = "=0.1.9"\n')
-        with self.assertRaisesRegex(RuntimeError, "Reverse qargo dependency"):
+        path.write_text(original + '\n[target.\'cfg(target_os = "none")\'.dependencies]\nqlirgo = "=0.1.9"\n')
+        with self.assertRaisesRegex(RuntimeError, "Reverse qlirgo dependency"):
             audit(self.root)
         path.write_text(original)
 
     def test_shared_support_and_canonical_sources_cannot_reverse_direction(self):
-        for label, addition in (("qrates/qlifmt/src/lib.rs", "use qlippy_engine::rules::RULES;"),
-                                ("qrates/qlifmt/src/lib.rs", "use qlippy_engine as hidden;"),
-                                ("qrates/qlidoc/src/lib.rs", "use qlippy_engine::support::adapter;"),
-                                ("qrates/qlippy/src/report.rs", "use crate::rules;"),
-                                ("qrates/qlippy/src/report.rs", "use crate::{rules};"),
-                                ("qrates/qlippy/tests/engine.rs", "use qargo_tools::qargo;"),
-                                ("qrates/qlippy/src/lib.rs", 'include!("../../../src/lib.rs");')):
+        for label, addition in (("qrates/qlifmt/src/lib.rs", "use qlinties_engine::rules::RULES;"),
+                                ("qrates/qlifmt/src/lib.rs", "use qlinties_engine as hidden;"),
+                                ("qrates/qlidoc/src/lib.rs", "use qlinties_engine::support::adapter;"),
+                                ("tool-support/report.rs", "use crate::rules;"),
+                                ("tool-support/report.rs", "use crate::{rules};"),
+                                ("qrates/qlinties/tests/engine.rs", "use qlirgo_tools::qlirgo;"),
+                                ("qrates/qlinties/src/lib.rs", 'include!("../../../src/lib.rs");')):
             path = self.root / label
             original = path.read_text()
             path.write_text(original + "\n" + addition)
@@ -188,7 +211,7 @@ class ProjectBoundaryTests(unittest.TestCase):
             path.write_text(original)
 
     def test_root_adapters_cannot_acquire_semantics(self):
-        for label in ("src/bin/qlifmt.rs", "tests/qlippy.rs"):
+        for label in ("src/bin/qlifmt.rs", "tests/qlinties.rs"):
             path = self.root / label
             original = path.read_text()
             path.write_text(original + '\nfn policy() {}\n')
@@ -201,26 +224,52 @@ class ProjectBoundaryTests(unittest.TestCase):
             {"name": "qlifmt-engine", "manifest_path": str(self.root / "rust/qlifmt/Cargo.toml"),
              "targets": [{"src_path": str(self.root / "qrates/qlifmt/src/lib.rs")}], "dependencies": []}]}
         audit_metadata(base, self.root)
-        for key, value in (("name", "qargo"), ("manifest_path", str(SOURCE / "Cargo.toml")),
-                           ("targets", [{"src_path": str(SOURCE / "src/lib.rs")}] ),
+        for key, value in (("name", "qlirgo"), ("manifest_path", str(SOURCE / "Cargo.toml")),
+                           ("targets", [{"src_path": str(SOURCE / "src/lib.rs")}]),
+                           ("manifest_path", str(self.root / "rust/qlinties/Cargo.toml")),
                            ("dependencies", [{"path": str(SOURCE)}])):
             data = copy.deepcopy(base)
             data["packages"][0][key] = value
             with self.assertRaises(RuntimeError):
                 audit_metadata(data, self.root)
 
+    def test_transitional_manifest_mismatch_is_a_boundary_error(self):
+        for name in QRATES:
+            path = self.root / "qrates" / name / "Qargo.toml"
+            original = path.read_bytes()
+            path.write_bytes(original + b"# byte mismatch\n")
+            with self.assertRaisesRegex(RuntimeError, "Transitional manifests differ"):
+                audit(self.root)
+            path.write_bytes(original)
+
+    def test_rust_component_versions_keep_the_complete_prerelease_identity(self):
+        version = verify_versions(self.root)
+        for name in QRATES:
+            path = self.root / "rust" / name / "Cargo.toml"
+            original = path.read_text()
+            path.write_text(original.replace('version = "' + version + '"', 'version = "' + qrate_version(version) + '-beta.99"', 1))
+            with self.assertRaisesRegex(RuntimeError, "version mismatch"):
+                verify_versions(self.root)
+            path.write_text(original)
+
     def test_every_standard_version_mismatch_fails_without_repair(self):
         version = verify_versions(self.root)
         for name in QRATES:
-            for label in (f"qrates/{name}/Qargo.toml", f"rust/{name}/Cargo.toml"):
+            for label in (f"qrates/{name}/Qlirgo.toml", f"rust/{name}/Cargo.toml"):
                 path = self.root / label
                 original = path.read_text()
-                changed = original.replace('version = "' + version + '"', 'version = "9.8.7"', 1)
+                selected_version = qrate_version(version) if path.name == "Qlirgo.toml" else version
+                changed = original.replace('version = "' + selected_version + '"', 'version = "9.8.7"', 1)
                 path.write_text(changed)
+                peer = path.with_name("Qargo.toml") if path.name == "Qlirgo.toml" else None
+                if peer is not None:
+                    peer.write_text(changed)
                 with self.assertRaisesRegex(RuntimeError, "version mismatch"):
                     verify_versions(self.root)
                 self.assertEqual(path.read_text(), changed)
                 path.write_text(original)
+                if peer is not None:
+                    peer.write_text(original)
         with self.assertRaisesRegex(RuntimeError, "Distribution expectation"):
             verify_versions(self.root, "9.8.7")
 
@@ -253,7 +302,8 @@ class ProjectBoundaryTests(unittest.TestCase):
         record = {"package": "archive-checksum", "files": {"lib.rs": sha256(content)[7:]}}
         (directory / ".cargo-checksum.json").write_text(json.dumps(record))
         (self.root / "rust/qlifmt/Cargo.lock").write_text(
-            'version = 4\n[[package]]\nname = "example"\nversion = "1.0.0"\n'
+            'version = 4\n[[package]]\nname = "qlifmt-engine"\nversion = "0.2.0-beta"\n\n'
+            '[[package]]\nname = "example"\nversion = "1.0.0"\n'
             'source = "registry+https://github.com/rust-lang/crates.io-index"\nchecksum = "archive-checksum"\n')
         audit_vendor(self.root, "qlifmt")
         (directory / "lib.rs").write_bytes(b"modified")
@@ -279,6 +329,143 @@ class ProjectBoundaryTests(unittest.TestCase):
         after = generated_inputs(target)
         self.assertNotEqual(before, after)
         self.assertEqual(before[0]["path"], after[0]["path"])
+
+
+class ExtractionNativeContextTests(unittest.TestCase):
+    """Host-only filesystem/response controls; no compiler or native invocation."""
+
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory(prefix="qrate-native-context-")
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name).resolve()
+        self.forbid_process = patch("subprocess.Popen", side_effect=AssertionError("No processes in host units"))
+        self.forbid_process.start()
+        self.addCleanup(self.forbid_process.stop)
+
+    def executable(self):
+        path = self.root / "kernel"
+        path.write_bytes(b"inert selected executable bytes")
+        path.chmod(0o755)
+        return path
+
+    def test_kernel_capture_is_canonical_file_only_and_changed_bytes_refuse(self):
+        kernel = self.executable()
+        alias = self.root / "selected-alias"
+        alias.symlink_to(kernel)
+        selected, inventory = capture_kernel(alias)
+        self.assertEqual(selected, kernel)
+        self.assertEqual(len(inventory), 1)
+        self.assertEqual((inventory[0]["path"], inventory[0]["kind"], inventory[0]["executable"]),
+                         (".", "file", True))
+        native = {"inventories": {str(selected): inventory}}
+        verify_native_unchanged(native, self.root / "unused-toolchain")
+        audit_linux_access(f'1 execve("{selected}", [], []) = 0\n', [selected])
+        with self.assertRaisesRegex(RuntimeError, "Unrecorded"):
+            audit_linux_access(f'1 openat(AT_FDCWD, "sibling", O_RDONLY) = 3<{self.root / "sibling"}>\n',
+                               [selected])
+        kernel.write_bytes(b"changed bytes")
+        with self.assertRaisesRegex(RuntimeError, "Native inputs changed"):
+            verify_native_unchanged(native, self.root / "unused-toolchain")
+
+    def test_missing_directory_nonexecuting_and_special_kernel_refuse_without_reading(self):
+        with self.assertRaises(FileNotFoundError):
+            capture_kernel(self.root / "missing")
+        with self.assertRaisesRegex(RuntimeError, "regular executable"):
+            capture_kernel(self.root)
+        kernel = self.executable()
+        kernel.chmod(0o644)
+        with self.assertRaisesRegex(RuntimeError, "regular executable"):
+            capture_kernel(kernel)
+        if hasattr(os, "mkfifo"):
+            fifo = self.root / "pipe"
+            os.mkfifo(fifo)
+            with self.assertRaisesRegex(RuntimeError, "regular executable"):
+                capture_kernel(fifo)
+
+    def test_isolated_environment_keeps_only_the_explicit_kernel_selection(self):
+        project = self.root / "project"
+        development = project / "rust/qlinties"
+        (development / ".cargo").mkdir(parents=True)
+        (development / ".cargo/config.toml").write_text(
+            '[source.crates-io]\nreplace-with="captured"\n[source.captured]\ndirectory="../../vendor"\n')
+        (development / "rust-toolchain.toml").write_text(
+            '[toolchain]\nchannel="1.85.0"\nprofile="minimal"\ncomponents=["clippy","rustfmt"]\n')
+        work = self.root / "work"
+        work.mkdir()
+        kernel, _ = capture_kernel(self.executable())
+        with patch.dict(os.environ, {"QLEISLI_KERNEL": "/not/the/selected/kernel", "UNADMITTED": "ambient"}):
+            environment = isolated_config(project, "qlinties", work, {"QLEISLI_KERNEL": str(kernel)})
+        self.assertEqual(environment["QLEISLI_KERNEL"], str(kernel))
+        self.assertNotIn("UNADMITTED", environment)
+
+    def test_lint_refusals_cannot_mask_the_actual_positive_or_fault(self):
+        def report(fixture):
+            failed = fixture in ("syntax", "type")
+            check = {"status": "failed", "reason": "compiler_error"} if failed else {
+                "status": "not_run", "reason": "no_sources"} if fixture == "empty" else {
+                "status": "passed", "reason": None}
+            diagnostic = [{"category": "compiler", "severity": "error",
+                           "id": "parse" if fixture == "syntax" else "unknown_name"}] if failed else []
+            return {"format": "qlinties.result", "version": 1, "command": "lint",
+                    "outcome": "error" if failed else "ok", "diagnostics": diagnostic,
+                    "result": {"source_count": 0 if fixture == "empty" else 1, "qleisli_check": check}}
+        for fixture in ("empty", "valid", "gate", "syntax", "type"):
+            envelope = report(fixture)
+            result = SimpleNamespace(returncode=1 if fixture in ("syntax", "type") else 0)
+            require_lint_case("qlinties", fixture, ["src"], True, result, envelope)
+        changed = report("gate")
+        changed["result"]["qleisli_check"] = {"status": "failed", "reason": "compiler_error"}
+        with self.assertRaisesRegex(RuntimeError, "positive/empty"):
+            require_lint_case("qlinties", "gate", ["src"], True, SimpleNamespace(returncode=0), changed)
+        for id in ("project", "kernel", "type_mismatch"):
+            changed = report("type")
+            changed["diagnostics"][0]["id"] = id
+            with self.assertRaisesRegex(RuntimeError, "wrong compiler"):
+                require_lint_case("qlinties", "type", ["src"], True, SimpleNamespace(returncode=1), changed)
+        changed = report("valid")
+        changed["result"]["source_count"] = True
+        with self.assertRaisesRegex(RuntimeError, "actual source"):
+            require_lint_case("qlinties", "valid", ["src"], True, SimpleNamespace(returncode=0), changed)
+
+    def test_comparison_stages_real_manifests_and_keeps_identity_gate_empty_and_faults(self):
+        seen = set()
+        digest = "sha256:" + "a" * 64
+        originals = {"valid": "pub unitary fn identity(q:Q<Bit>)->Q<Bit>{q}",
+                     "gate": "pub unitary fn had(q:Q<Bit>)->Q<Bit>{h(q)}",
+                     "syntax": "not a module {{{",
+                     "type": "pub unitary fn invalid()->Q<Bit>{missing()}"}
+
+        def fake_run(command, cwd, **kwargs):
+            source = cwd / "src/smoke.qli"
+            fixture = next((name for name, text in originals.items()
+                            if source.exists() and source.read_text() == text), "empty")
+            seen.add(fixture)
+            manifest_path = cwd / "Qlirgo.toml"
+            self.assertEqual(manifest_path.exists(), fixture != "empty")
+            if fixture != "empty":
+                data = json.loads(json.dumps(__import__("tomllib").loads(manifest_path.read_text())))
+                self.assertEqual((data["schema-version"], data["qrate"]["edition"]), (2, "2026"))
+            self.assertEqual(kwargs["env"]["QLEISLI_KERNEL"], "/explicit/selected/kernel")
+            args = command[1:]
+            lint = args in (["src"], ["src", "--deny-warnings"],
+                            ["src", "--format=json"], ["src", "--deny-warnings", "--format=json"])
+            failed = lint and fixture in ("syntax", "type")
+            check = {"status": "failed", "reason": "compiler_error"} if failed else {
+                "status": "not_run", "reason": "no_sources"} if fixture == "empty" else {
+                "status": "passed", "reason": None}
+            diagnostics = [{"id": "parse" if fixture == "syntax" else "unknown_name",
+                            "category": "compiler", "severity": "error"}] if failed else []
+            envelope = {"format": "qlinties.result", "version": 1, "command": "lint" if lint else "control",
+                        "outcome": "error" if failed else "ok", "diagnostics": diagnostics,
+                        "result": {"source_count": 0 if fixture == "empty" else 1,
+                                   "qleisli_check": check, "tool": {"executable_sha256": digest}}}
+            return SimpleNamespace(returncode=1 if failed else 0, stderr=b"",
+                                   stdout=(json.dumps(envelope).encode() if "--format=json" in args else b"same text"))
+        with patch("verify_qrate.subprocess.run", side_effect=fake_run), \
+             patch("verify_qrate.file_digest", return_value=digest):
+            compare_entrypoints("qlinties", self.root / "standalone", self.root / "bundled", self.root,
+                                {"QLEISLI_KERNEL": "/explicit/selected/kernel"})
+        self.assertEqual(seen, {"empty", *originals})
 
 
 if __name__ == "__main__":

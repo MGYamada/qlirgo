@@ -89,7 +89,20 @@ def linux_resource_inputs(cgroup=Path("/proc/self/cgroup"), root=Path("/sys/fs/c
     return paths
 
 
-def capture_native(toolchain):
+def capture_kernel(kernel):
+    """Capture one explicitly selected executable, never its source/target parent."""
+    kernel = Path(kernel).resolve(strict=True)
+    require(kernel.is_file() and not kernel.is_symlink() and os.access(kernel, os.X_OK),
+            "Pass an explicit regular executable Qleisli kernel")
+    inventory = external_tree(kernel)
+    require(len(inventory) == 1 and inventory[0]["path"] == "." and
+            inventory[0]["kind"] == "file" and inventory[0]["executable"],
+            "Qleisli kernel must remain one regular executable during capture")
+    return kernel, inventory
+
+
+def capture_native(toolchain, kernel):
+    kernel, kernel_inventory = capture_kernel(kernel)
     toolchain = toolchain.resolve()
     rustc = toolchain / "bin/rustc"
     require(rustc.is_file() and (toolchain / "bin/cargo").is_file(), "Pass a resolved Rust toolchain directory, not rustup shims")
@@ -123,7 +136,8 @@ def capture_native(toolchain):
                                         "/lib/x86_64-linux-gnu", "/usr/lib64", "/lib64",
                                         "/etc/ld.so.cache", "/etc/ld.so.conf", "/etc/ld.so.conf.d",
                                         "/etc/ssl/openssl.cnf", "/etc/ssl/certs/ca-certificates.crt", "/etc/gitconfig",
-                                        "/sys/kernel/mm/transparent_hugepage/enabled") if Path(name).exists()]
+                                        "/sys/kernel/mm/transparent_hugepage/enabled", "/sys/devices/system/cpu/online",
+                                        "/usr/share/coreutils/locales/uucore/en-US.ftl") if Path(name).exists()]
         roots += [Path("/usr/bin") / name for name in ("gcc", "as", "ld", "ar", "ranlib", "objcopy", "strip", "env", "uname", "sh", "strace", "mkfifo")]
         roots += linux_resource_inputs()
         roots = list(dict.fromkeys(path.resolve() for path in roots))
@@ -137,21 +151,26 @@ def capture_native(toolchain):
         require(binary.is_file(), "Missing verification tool: " + name)
         tools[name] = {"sha256": file_digest(binary), "version": output([binary, "--version"])}
     tools["cc"] = {"sha256": file_digest(compiler.resolve()), "version": output([compiler, "--version"])}
+    # No kernel version query exists. Actual verification checks compatibility;
+    # these bytes/path are an observed build input, not a binary attestation.
+    tools["qleisli-kernel"] = {"path": str(kernel), "sha256": kernel_inventory[0]["sha256"]}
     env.update({"CC": str(compiler), "CXX": str(compiler), "RUSTC": str(rustc),
                 "RUSTDOC": str(toolchain / "bin/rustdoc"),
                 "RUSTFLAGS": "-C linker=" + str(compiler), "RUSTDOCFLAGS": "-D warnings",
                 "PATH": str(toolchain / "bin") + ":/usr/bin:/bin", "LC_ALL": "C", "TZ": "UTC",
                 "OPENSSL_CONF": "/dev/null", "GIT_CONFIG_NOSYSTEM": "1",
-                "GIT_CONFIG_SYSTEM": "/dev/null", "GIT_CONFIG_GLOBAL": "/dev/null"})
+                "GIT_CONFIG_SYSTEM": "/dev/null", "GIT_CONFIG_GLOBAL": "/dev/null",
+                "QLEISLI_KERNEL": str(kernel)})
     print("Capturing Rust toolchain, native tools, SDK/headers and system libraries...", flush=True)
     inventories = {"rust-toolchain": external_tree(toolchain)}
     for root in roots:
         print("Capturing native input: " + str(root), flush=True)
         inventories[str(root)] = external_tree(root)
-    record = {"format": "qargo.native-build-inputs", "version": 1, "host": host,
+    inventories[str(kernel)] = kernel_inventory
+    record = {"format": "qlirgo.native-build-inputs", "version": 1, "host": host,
               "platform": platform.platform(), "tools": tools, "environment": env,
               "inventories": inventories}
-    record["native_id"] = identity("qargo.native-build-inputs.v1", record)
+    record["native_id"] = identity("qlirgo.native-build-inputs.v1", record)
     return record, env
 
 
@@ -279,10 +298,10 @@ def generated_inputs(target):
 
 
 def build_binding(project_id, native, choices, generated, artifacts):
-    record = {"format": "qargo.rust-build-environment", "version": 1,
+    record = {"format": "qlirgo.rust-build-environment", "version": 1,
               "project_id": project_id, "native_id": native["native_id"],
               "choices": choices, "generated_inputs": generated, "artifacts": artifacts}
     # Final artifact digests are outputs, separate from environment identity.
     binding = {key: value for key, value in record.items() if key != "artifacts"}
-    record["build_environment_id"] = identity("qargo.rust-build-environment.v1", binding)
+    record["build_environment_id"] = identity("qlirgo.rust-build-environment.v1", binding)
     return record
