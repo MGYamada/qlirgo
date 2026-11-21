@@ -5,8 +5,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use qlidoc_engine::support::snapshot::{Files, digest_path};
 use qlidoc_engine::{publish, render_files, run};
-use qlinties_engine::support::snapshot::{Files, digest_path};
 use serde_json::Value;
 
 fn sources(label: &str, source: &str) -> Files {

@@ -13,9 +13,9 @@ use qleisli::frontend::ast::{
 use qleisli::frontend::project::{ModuleOrigin, Project};
 use serde_json::json;
 
-use crate::adapter;
+use super::adapter;
+use super::rules::{self, DOUBLE_INVERSE, REDUNDANT_REPEAT_ONE, UNUSED_IMPORT};
 use crate::report::{Diagnostic, Location, Report, coordinates, tool_info};
-use crate::rules::{self, DOUBLE_INVERSE, REDUNDANT_REPEAT_ONE, UNUSED_IMPORT};
 use crate::snapshot::{Files, FrozenSources};
 
 const FORMAT: &str = "qlinties.result";

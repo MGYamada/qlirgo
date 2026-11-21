@@ -43,16 +43,14 @@ changing its version or establishing a change to its Qleisli interface.
 
 1. Give each development package its own Cargo workspace, explicit dependencies,
    lockfile, and toolchain configuration; exclude it from the root workspace.
-   Preserve Rust edition 2024, Rust 1.85 support, exact Qleisli 0.2.1, and the
+   Preserve Rust edition 2024, Rust 1.85 support, exact Qleisli 0.3.0-beta, and the
    unsafe-code prohibition.
 2. Register component-owned CLI and integration-test targets. Canonical engines,
    CLI sources, and tests must not depend on the root `qlirgo_tools` facade. Thin
    root adapters reuse those sources for the public bundle.
-3. Keep shared support in qlinties. Qlifmt and qlidoc explicitly depend on it in
-   Cargo through the internal support surface defined below. Extraction includes
-   its exact source/build configuration snapshot and records version and content
-   identity, without reaching into the original checkout or introducing qlirgo
-   dependencies or a new published crate.
+3. Include the neutral `tool-support/` sources in each Rust project record.
+   Each engine has one local package and an explicit registry dependency graph.
+   A peer tool’s source tree, executable and Cargo workspace may be absent.
 4. Extract the complete declared inventory, preserving relative directory
    relationships and omitting the root qlirgo Cargo manifest. Cargo configuration
    stays outside qrate input roots. Run Cargo from the extracted component's own
@@ -63,14 +61,11 @@ changing its version or establishing a change to its Qleisli interface.
 
 ## Shared support, adapters, and dependency direction
 
-Keep shared-library ownership in qlinties while separating it logically from the
-qlinties linter product. Audit the support API independently of the linter's CLI
-and rule implementation. Qlifmt and qlidoc may consume capture/snapshot,
-diagnostic/transport, identity, syntax, executable, and publication support.
-They may not consume lint rules, catalogs, severity/promotion policies, lint
-entry points, CLI defaults, or product-version globals. Shared checker support
-remains available to qlirgo and qlinties; formatting/documentation remain
-syntax-only and must not acquire a checker or lint acceptance gate.
+The six neutral modules in `tool-support/` provide input capture, manifests,
+identities, diagnostics, syntax utilities and publication. Each Rust workspace
+assembles them with its own engine using a wiring-only library entry point.
+Qlinties owns its rules, catalog and ordinary-checker adapter. Qlirgo can
+call that adapter. Qlifmt and qlidoc only parse syntax.
 
 Support APIs accept each caller's identity and policy explicitly. A linter
 refactor must not require downstream changes unless it also deliberately changes

@@ -3,13 +3,15 @@
 mod apply;
 mod formatter;
 
+pub use crate::support;
+
 use std::ffi::OsString;
 use std::path::PathBuf;
 
-use qlinties_engine::support::report::{Diagnostic, Report, tool_info};
-use qlinties_engine::support::snapshot::digest_files;
-use qlinties_engine::support::source::{capture_source, syntax_step};
 use serde_json::json;
+use support::report::{Diagnostic, Report, tool_info};
+use support::snapshot::digest_files;
+use support::source::{capture_source, syntax_step};
 
 pub use apply::{ApplyFailure, apply_captured, apply_files};
 pub use formatter::{changed_files, diff, format_files, validate_formatted};
