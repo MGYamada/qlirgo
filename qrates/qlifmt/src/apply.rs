@@ -125,6 +125,7 @@ impl Drop for StageDirectory {
 struct Staged {
     stage: std::rc::Rc<StageDirectory>,
     output: std::fs::File,
+    temporary: String,
     name: String,
     label: String,
     installed: bool,
@@ -135,7 +136,7 @@ impl Staged {
     fn still_named(&self) -> std::io::Result<bool> {
         crate::support::snapshot::still_named(
             &self.stage.directory,
-            self.name.as_ref(),
+            self.temporary.as_ref(),
             &self.output,
         )
     }
@@ -154,7 +155,7 @@ impl Staged {
         // Resolve the candidate inside the held private directory throughout the rename.
         rustix::fs::renameat(
             &self.stage.directory,
-            self.name.as_str(),
+            self.temporary.as_str(),
             &self.stage.parent,
             self.name.as_str(),
         )
@@ -170,7 +171,7 @@ impl Drop for Staged {
         if !self.installed && self.still_named().unwrap_or(false) {
             let _ = rustix::fs::unlinkat(
                 &self.stage.directory,
-                self.name.as_str(),
+                self.temporary.as_str(),
                 rustix::fs::AtFlags::empty(),
             );
         }
@@ -286,9 +287,10 @@ fn apply_with_hook(
             }
             Entry::Occupied(entry) => entry.into_mut(),
         };
+        let temporary = format!("{}.tmp", staged.len());
         let fd = openat(
             &stage.directory,
-            name.as_str(),
+            temporary.as_str(),
             OFlags::WRONLY | OFlags::CREATE | OFlags::EXCL | OFlags::NOFOLLOW | OFlags::CLOEXEC,
             Mode::RUSR | Mode::WUSR,
         )
@@ -296,6 +298,7 @@ fn apply_with_hook(
         let mut candidate = Staged {
             stage: Rc::clone(stage),
             output: File::from(fd),
+            temporary,
             installed: false,
             name,
             label,
@@ -357,6 +360,7 @@ mod tests {
             let mut staged = Staged {
                 stage: stage.clone(),
                 output: File::open(staging.join("held")).unwrap(),
+                temporary: name.to_owned(),
                 name: name.to_owned(),
                 label: name.to_owned(),
                 installed: false,
@@ -388,6 +392,22 @@ mod tests {
         assert!(!stage.still_named().unwrap());
         drop(stage);
         assert!(root.join("other").is_dir());
+    }
+
+    #[test]
+    fn staged_candidates_are_excluded_from_source_discovery() {
+        let home = tempfile::tempdir().unwrap();
+        let source = b"pub unitary fn identity(q:Q<Bit>)->Q<Bit>{q}";
+        std::fs::write(home.path().join("module.qli"), source).unwrap();
+        let root = InputDirectory::open(home.path()).unwrap();
+        let original = root.collect(Some("qli")).unwrap();
+        let formatted = format_files(&original).unwrap();
+        let updated = apply_with_hook(&root, &original, &formatted, |_, _| {
+            assert_eq!(root.collect(Some("qli")).unwrap(), original);
+        })
+        .unwrap();
+        assert_eq!(updated, ["module.qli"]);
+        assert_eq!(std::fs::read_dir(home.path()).unwrap().count(), 1);
     }
 
     #[test]
