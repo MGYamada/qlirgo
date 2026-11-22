@@ -536,7 +536,7 @@ fn closed_child_schema_identity_and_coordinates_are_checked() {
     let valid = json!({
         "format":"qlinties.result","version":1,"command":"lint","outcome":"ok","diagnostics":[],
         "result":{"source_count":1,"source_id":frozen.source_id(),"qleisli_check":{"status":"passed","reason":null},
-          "tool":{"name":"qlinties","version":qlirgo_tools::VERSION,"executable_sha256":digest,"qleisli_version":"0.3.0-beta","profile":"finite-v0"}}
+          "tool":{"name":"qlinties","version":qlirgo_tools::VERSION,"executable_sha256":digest,"qleisli_version":qlirgo_tools::QLEISLI_VERSION,"profile":"finite-v0"}}
     });
     let args = [
         OsString::from("lint"),
@@ -680,7 +680,7 @@ fn build_metadata_keeps_the_project_captured_before_native_checking() {
         tool.path(),
         r#"set -eu
 if [ ! -e "$QLIRGO_MUTATION_LOG" ]; then
-    find "$TMPDIR" -type f -name Qargo.toml -exec sh -c '
+    find "$TMPDIR" -type f -name Qlirgo.toml -exec sh -c '
         for path do
             printf "%s\n" "schema-version=2" "[qrate]" "edition=\"2027\"" > "$path"
             printf "%s\n" "$path" >> "$QLIRGO_MUTATION_LOG"

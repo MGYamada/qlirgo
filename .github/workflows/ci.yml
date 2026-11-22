@@ -29,7 +29,7 @@ jobs:
           cargo +${{ matrix.toolchain }} metadata --frozen --format-version=1 --manifest-path=Cargo.toml > "$RUNNER_TEMP/qlirgo-dependencies.json"
           qleisli_source_root="$(python3 scripts/qleisli_dependency.py --metadata="$RUNNER_TEMP/qlirgo-dependencies.json" --manifest-path=Cargo.toml)"
           printf 'QLEISLI_SOURCE_ROOT=%s\n' "$qleisli_source_root" >> "$GITHUB_ENV"
-      - name: Prepare the linked Qleisli beta kernel
+      - name: Prepare the linked Qleisli kernel
         uses: ./.github/actions/beta-kernel
       - name: Check formatting
         if: matrix.toolchain == 'stable'

@@ -1,6 +1,6 @@
 # qlifmt
 
-qlifmt 0.2.0-beta is the Qleisli formatter in the standard qlirgo bundle.
+qlifmt 0.2.0 is the Qleisli formatter in the standard qlirgo bundle.
 
 ```text
 qlifmt <file-or-source-root> [--check] [--format=json]
@@ -17,7 +17,7 @@ syntax token spellings, comment bodies and comment order are preserved. LF and
 CRLF are retained; files containing both retain their first line-ending style.
 No import sorting or style configuration is provided in 0.2.0.
 
-Formatting parses Qleisli 0.3.0-beta syntax and validates token/comment preservation
+Formatting parses Qleisli 0.3.0 syntax and validates token/comment preservation
 and documentation attachment. It does not require or imply type, ownership,
 contract or quantum verification. Qlirgo freezes inputs and validates the child
 formatter response before applying it. Direct qlifmt invocations likewise check

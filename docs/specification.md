@@ -18,7 +18,7 @@ CLI commands and exit codes retain their existing contracts. This development mi
 
 ## Published binary distribution and installation
 
-This section records the existing distribution contract and published 0.1.9 behavior. The selected qlirgo 0.2.0-beta candidate remains unpublished; registry package and native installer validation are pending. Current beta naming and version selection are specified in the naming migration and release checklist.
+This section records the existing distribution contract and published 0.1.9 behavior. The qlirgo 0.2.0 candidate targets the published Qleisli 0.3.0 crate. See the [release checklist](releasing.md) for the qlirgo package, installer and native validation gates.
 
 Published-release verification requires exactly the supported target archives,
 `install.sh`, and `SHA256SUMS` as top-level regular files. Missing, extra, linked,
@@ -70,7 +70,7 @@ A qrate comprises its selected Qlirgo.toml or legacy Qargo.toml, a source root, 
 
 The semantic subject of a qrate is its local Qleisli modules, public declarations, and contracts checked by the selected Qleisli implementation. Its raw input identity is a provenance envelope and can also contain host-language sources, tests, and documentation. Including Rust in that envelope does not extend Qleisli checking to Rust or make the host engine part of a proved Qleisli interface. The standard tool qrates are management examples whose smoke interfaces do not describe or certify their Rust engines. Schema 2 provides local source management, an explicit language edition, and provenance; it does not promise registry identity, dependency compatibility, or a complete semantic package contract.
 
-The development acceptance frontend is linked Qleisli `=0.3.0-beta`. Nonempty qlirgo check/build and qlinties use its ordinary project report API with one explicitly selected native kernel; missing/incompatible/failing native checking fails without fallback. Qlirgo captures actual std metadata from `bundled_std()`, not a second registry or user selector. `finite-v0` remains the source adapter compatibility label, not native identity or proof. PATH `qleisli` and manager state do not replace this linked frontend. See [source configuration and report fields](linked-qleisli-030.md).
+The qlirgo 0.2.0 candidate links the Qleisli `=0.3.0` acceptance frontend. Nonempty qlirgo check/build and qlinties use its ordinary project report API with one explicitly selected native kernel; missing/incompatible/failing native checking fails without fallback. Qlirgo captures actual std metadata from `bundled_std()`, not a second registry or user selector. `finite-v0` remains the source adapter compatibility label, not native identity or proof. PATH `qleisli` and manager state do not replace this linked frontend. See [source configuration and report fields](linked-qleisli-030.md).
 
 qleisliup may launch a complete qlirgo bundle through its offline proxies. Its repository declaration and selection environment choose the executable bundle before qlirgo starts; qlirgo does not interpret `qleisli-toolchain.toml`, `QLEISLIUP_TOOLCHAIN`, `QLEISLIUP_HOME`, or manager state. Proxy selection does not change the linked checker or parser. Manager declarations outside the declared qrate inputs are not included in the current input identity or build snapshot. The [qleisliup compatibility plan](toolchains.md#qleisliup-compatibility-plan) specifies future development checks and protocol prerequisites without adding a current command, manifest field, or result field.
 

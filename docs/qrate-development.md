@@ -49,7 +49,7 @@ timestamps, caches, Git state and build outputs. Qrate inputs and this complete
 Rust project are separate artifacts. No qlirgo result schema is extended.
 
 On Linux x86_64 and macOS ARM64, CI selects the native checker archive from
-the [linked beta release](https://github.com/MGYamada/Qleisli/releases/tag/v0.3.0-beta).
+the Qleisli 0.3.0 release after publication.
 It checks the archive SHA-256, the release commit recorded by the registry
 crate, the full-replay manifest, its source hashes against the selected
 dependency, and its installed payload. The Intel macOS distribution job builds
@@ -130,8 +130,8 @@ installation exercises compatibility without changing that project identity.
 For development in the original checkout, `python3 scripts/qrate_project.py`
 audits component dependency direction and checks that root CLI/test adapters
 remain wiring only. Release validation compares literal standard-qrate and Rust
-versions to root Cargo `[package].version`: the full 0.2.0-beta for Rust packages
-and tools, the canonical 0.2.0 base for bundled qrates. It does not change qrate
+versions to root Cargo `[package].version`. For the stable candidate, Rust
+packages, tools and bundled qrates all use 0.2.0. It does not change qrate
 version syntax or relax full-version tool compatibility. Qlirgo commands do not run these
 developer scripts or Cargo.
 

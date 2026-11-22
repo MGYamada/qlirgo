@@ -206,7 +206,7 @@ fn response(tool: &Path, sources: &FrozenSources, command: &str) -> Value {
     let name = if command == "fmt" { "qlifmt" } else { "qlidoc" };
     let mut result = json!({"source_count":sources.count(), "source_id":sources.source_id(),
         "qleisli_check":{"status":"not_run","reason":"syntax_only"},
-        "tool":{"name":name,"version":qlirgo_tools::VERSION,"executable_sha256":digest_path(tool).unwrap(),"qleisli_version":"0.3.0-beta","profile":"finite-v0"}});
+        "tool":{"name":name,"version":qlirgo_tools::VERSION,"executable_sha256":digest_path(tool).unwrap(),"qleisli_version":qlirgo_tools::QLEISLI_VERSION,"profile":"finite-v0"}});
     if command == "fmt" {
         result["formatted_source_id"] = json!(sources.source_id());
         result["changed_files"] = json!([]);
@@ -236,6 +236,7 @@ fn closed_child_responses_reject_versions_binding_fields_and_duplicate_keys() {
             ("/version", json!(2)),
             ("/result/source_id", json!("sha256:wrong")),
             ("/result/tool/version", json!("0.1.0")),
+            ("/result/tool/qleisli_version", json!("0.3.0-beta")),
             ("/result/tool/executable_sha256", json!("sha256:wrong")),
             ("/result/qleisli_check/status", json!("passed")),
             ("/result/tool/profile", json!("unsupported")),

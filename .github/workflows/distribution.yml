@@ -51,7 +51,7 @@ jobs:
           cargo +1.85.0 metadata --frozen --format-version=1 --manifest-path="$release_source_dir/Cargo.toml" > "$RUNNER_TEMP/distribution-dependencies.json"
           qleisli_source_root="$(python3 scripts/qleisli_dependency.py --metadata="$RUNNER_TEMP/distribution-dependencies.json" --manifest-path="$release_source_dir/Cargo.toml")"
           printf 'QLEISLI_SOURCE_ROOT=%s\n' "$qleisli_source_root" >> "$GITHUB_ENV"
-      - name: Prepare the linked Qleisli beta kernel
+      - name: Prepare the linked Qleisli kernel
         uses: ./.github/actions/beta-kernel
       - name: Build and verify the candidate source archive
         # Integration tests repeatedly hash and execute the real bundle binaries.

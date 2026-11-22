@@ -1,6 +1,12 @@
 # Changelog
 
-## qlirgo 0.2.0-beta — Unreleased
+## qlirgo 0.2.0
+
+- Pin the root and independent tool workspaces to the published Qleisli 0.3.0 crate. The four 0.2.0 executables use the matching native checker and bundled std.
+- Pass captured `Qlirgo.toml` configuration directly to Qleisli. Continue accepting `Qargo.toml` and require byte-identical copies when both files are present.
+- Retain schema 2 for manifests and parent results, schema 1 for child results, and explicit Qleisli edition 2026. Formatting and documentation remain syntax-only.
+
+## qlirgo 0.2.0-beta — 2026-11-21
 
 - Keep each staged formatter file open and recheck its identity before replacement or cleanup (#31).
 
