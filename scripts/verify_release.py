@@ -17,7 +17,7 @@ from release_version import qrate_version
 
 QRATES = ("qlinties", "qlifmt", "qlidoc")
 TOOLS = ("qlirgo", *QRATES)
-QLEISLI_VERSION = "0.3.0-beta"
+QLEISLI_VERSION = "0.3.0"
 # Release orchestration reads one authority; component declarations stay literal.
 PRODUCT_VERSION = tomllib.loads((Path(__file__).resolve().parents[1] / "Cargo.toml").read_text())["package"]["version"]
 
@@ -116,14 +116,14 @@ def expected_std(source_root):
     """
     root = source_root.resolve(strict=True)
     inputs = {}
-    for label in ("Cargo.toml", "stdlib/Qargo.toml", "src/frontend/source.rs"):
+    for label in ("Cargo.toml", "stdlib/Qlirgo.toml", "src/frontend/source.rs"):
         path = root / label
         require(path.is_file() and not path.is_symlink(), "Nonregular intended source input: " + label)
         inputs[label] = path.read_bytes()
     package = tomllib.loads(inputs["Cargo.toml"].decode("utf-8"))["package"]
     require(package.get("name") == "qleisli", "Intended source package is not Qleisli")
     product = package["version"]
-    manifest = tomllib.loads(inputs["stdlib/Qargo.toml"].decode("utf-8"))
+    manifest = tomllib.loads(inputs["stdlib/Qlirgo.toml"].decode("utf-8"))
     require(product == QLEISLI_VERSION, "Unexpected intended Qleisli source version")
     require(type(manifest.get("schema-version")) is int and manifest["schema-version"] == 2,
             "Incorrect std manifest schema")
@@ -133,7 +133,7 @@ def expected_std(source_root):
     registry = inputs["src/frontend/source.rs"].decode("utf-8")
     blocks = re.findall(r'static SOURCES: &\[BundledSource\] = &\[(.*?)\n        \];', registry, re.DOTALL)
     require(len(blocks) == 1, "Expected the single literal bundled registry")
-    require(registry.count('include_str!("../../stdlib/Qargo.toml")') == 1,
+    require(registry.count('include_str!("../../stdlib/Qlirgo.toml")') == 1,
             "Expected actual embedded std manifest")
     entry = re.compile(r'\s*BundledSource\s*\{\s*name: "(std::[a-z_][a-z0-9_]*)",\s*'
                        r'path: "(<bundled>/std/[a-z_][a-z0-9_]*\.qli)",\s*'
@@ -161,11 +161,11 @@ def expected_std(source_root):
         require(path.is_dir() or path.is_file(), "Nonregular std inventory entry: " + str(path))
     discovered = {"stdlib/src/" + label for label in discovered_files if label.endswith(".qli")}
     require(labels == discovered, "Bundled registry and complete std .qli inventory differ")
-    constituents = {"manifest:std": inputs["stdlib/Qargo.toml"]}
+    constituents = {"manifest:std": inputs["stdlib/Qlirgo.toml"]}
     constituents.update({"module:" + name: content for name, content in modules.items()})
     value = {"qleisli_version": product, "std": {
         "name": "std", "version": product, "edition": "2026",
-        "manifest_sha256": sha256(inputs["stdlib/Qargo.toml"]),
+        "manifest_sha256": sha256(inputs["stdlib/Qlirgo.toml"]),
         "modules": [{"name": name, "sha256": sha256(content)} for name, content in sorted(modules.items())],
         "content_id": input_id("qlirgo.bundled-std.v1", constituents)}}
     return value, {label: sha256(content) for label, content in sorted(inputs.items())}

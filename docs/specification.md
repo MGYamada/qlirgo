@@ -3,7 +3,7 @@
 Status: development contract for the authorized exact Qleisli `=0.3.0-beta` migration, derived from [Qleisli issue 53](https://github.com/MGYamada/Qleisli/issues/53) and the [linked migration contract](linked-qleisli-030.md). Manifest schema remains 2. Parent `qlirgo.result` and `qlirgo.build-record` become version 2; child result schemas remain 1. The merged implementation is the basis for qlirgo 0.2.0-beta. The [release checklist](releasing.md) tracks the checks required for each candidate. Published 0.1.9 from `0722fa78fe16dcf504b260103fe00f0d24d0cf88` (2026-10-10 UTC) remains immutable with Qleisli 0.2.1 and its original schemas.
 
 The current naming/manifest transition is specified in [naming migration](naming-migration.md).
-The functional package is qlirgo 0.2.0-beta (unreleased), with bundled qrate base version 0.2.0. Qleisli remains =0.3.0-beta.
+The formal qlirgo 0.2.0 candidate uses the exact Qleisli 0.3.0 dependency. It passes the selected manifest names and bytes to the linked compiler. The published qlirgo 0.2.0-beta uses Qleisli 0.3.0-beta and staged its derived legacy manifest only for that compiler.
 New interfaces use qlirgo/qlinties and the four-command bundle. No current public
 package or native-release readiness is implied.
 

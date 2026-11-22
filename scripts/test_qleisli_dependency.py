@@ -19,13 +19,13 @@ class DependencyAssociationTests(unittest.TestCase):
         self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name).resolve()
         self.manifest = self.root / "Cargo.toml"
-        self.manifest.write_text('[package]\nname="qlirgo"\nversion="0.1.9"\n[dependencies]\nqleisli="=0.3.0-beta"\n')
-        self.source = self.root / "registry/qleisli-0.3.0-beta"
-        files = {"Cargo.toml": '[package]\nname="qleisli"\nversion="0.3.0-beta"\n',
+        self.manifest.write_text('[package]\nname="qlirgo"\nversion="0.1.9"\n[dependencies]\nqleisli="=0.3.0"\n')
+        self.source = self.root / "registry/qleisli-0.3.0"
+        files = {"Cargo.toml": '[package]\nname="qleisli"\nversion="0.3.0"\n',
                  "lean-kernel/lean-toolchain": "leanprover/lean4:v4.30.0\n",
-                 "lean-kernel/lakefile.toml": 'name="qleisli_kernel"\nversion="0.3.0-beta"\n',
+                 "lean-kernel/lakefile.toml": 'name="qleisli_kernel"\nversion="0.3.0"\n',
                  "lean-kernel/lake-manifest.json": '{"packages":[]}',
-                 "stdlib/Qargo.toml": "not interpreted here", "src/frontend/source.rs": "source",
+                 "stdlib/Qlirgo.toml": "not interpreted here", "src/frontend/source.rs": "source",
                  "lean-kernel/Main.lean": "source", "lean-kernel/Audit.lean": "source",
                  "scripts/package_lean_kernel.py": "not executed", "scripts/check_lean_kernel.py": "not executed",
                  "scripts/native_packet.py": "not executed", "tests/fixtures/verification_v022/finite/t.v2.qirf": "fixture",
@@ -36,14 +36,14 @@ class DependencyAssociationTests(unittest.TestCase):
             path.write_text(content)
         self.metadata = {"version": 1, "packages": [
             {"id": "root", "name": "qlirgo", "manifest_path": str(self.manifest)},
-            {"id": "dependency", "name": "qleisli", "version": "0.3.0-beta",
+            {"id": "dependency", "name": "qleisli", "version": "0.3.0",
              "source": "registry+https://github.com/rust-lang/crates.io-index", "manifest_path": str(self.source / "Cargo.toml")}],
             "resolve": {"root": "root", "nodes": [{"id": "root", "deps": [{"name": "qleisli", "pkg": "dependency"}]}]}}
 
     def test_explicit_root_and_direct_package_are_bound_without_a_resolver(self):
         self.assertEqual(dependency_root(self.metadata, self.manifest), self.source)
         self.assertEqual(dependency_root(self.metadata, self.manifest, self.source), self.source)
-        self.manifest.write_text(self.manifest.read_text().replace('qleisli="=0.3.0-beta"', '[dependencies.qleisli]\nversion="=0.3.0-beta"'))
+        self.manifest.write_text(self.manifest.read_text().replace('qleisli="=0.3.0"', '[dependencies.qleisli]\nversion="=0.3.0"'))
         self.assertEqual(dependency_root(self.metadata, self.manifest), self.source)
 
     def test_actual_qlirgo_root_workspace_declaration_is_bound(self):
@@ -51,28 +51,28 @@ class DependencyAssociationTests(unittest.TestCase):
         source_manifest = Path(__file__).resolve().parent.parent / "Cargo.toml"
         manifest = tomllib.loads(source_manifest.read_text(encoding="utf-8"))
         self.assertEqual(manifest["dependencies"]["qleisli"], {"workspace": True})
-        self.assertEqual(manifest["workspace"]["dependencies"]["qleisli"], "=0.3.0-beta")
+        self.assertEqual(manifest["workspace"]["dependencies"]["qleisli"], "=0.3.0")
         self.manifest.write_bytes(source_manifest.read_bytes())
         self.assertEqual(dependency_root(self.metadata, self.manifest), self.source)
         self.manifest.write_text('[dependencies]\nqleisli={workspace=true}\n'
-                                 '[workspace.dependencies.qleisli]\nversion="=0.3.0-beta"\n')
+                                 '[workspace.dependencies.qleisli]\nversion="=0.3.0"\n')
         self.assertEqual(dependency_root(self.metadata, self.manifest), self.source)
 
     def test_workspace_inheritance_never_searches_ancestors_or_repairs_malformed_pins(self):
         invalid = [
             '[dependencies]\nqleisli={workspace=true}\n',
-            '[dependencies]\nqleisli={workspace=false}\n[workspace.dependencies]\nqleisli="=0.3.0-beta"\n',
-            '[dependencies]\nqleisli={workspace=1}\n[workspace.dependencies]\nqleisli="=0.3.0-beta"\n',
-            '[dependencies]\nqleisli={workspace=true,version="=0.3.0-beta"}\n[workspace.dependencies]\nqleisli="=0.3.0-beta"\n',
-            '[dependencies]\nqleisli={workspace=true,path="../other"}\n[workspace.dependencies]\nqleisli="=0.3.0-beta"\n',
+            '[dependencies]\nqleisli={workspace=false}\n[workspace.dependencies]\nqleisli="=0.3.0"\n',
+            '[dependencies]\nqleisli={workspace=1}\n[workspace.dependencies]\nqleisli="=0.3.0"\n',
+            '[dependencies]\nqleisli={workspace=true,version="=0.3.0"}\n[workspace.dependencies]\nqleisli="=0.3.0"\n',
+            '[dependencies]\nqleisli={workspace=true,path="../other"}\n[workspace.dependencies]\nqleisli="=0.3.0"\n',
             '[dependencies]\nqleisli={workspace=true}\n[workspace.dependencies]\nqleisli={workspace=true}\n',
             '[dependencies]\nqleisli={workspace=true}\n[workspace.dependencies]\nqleisli="=0.2.1"\n',
-            '[dependencies]\nqleisli={workspace=true}\n[workspace.dependencies]\nqleisli={version="=0.3.0-beta",path="../other"}\n',
+            '[dependencies]\nqleisli={workspace=true}\n[workspace.dependencies]\nqleisli={version="=0.3.0",path="../other"}\n',
         ]
         # A valid enclosing workspace must not fill the explicitly missing same-manifest pin.
         enclosing = self.root / "enclosing"
         enclosing.mkdir()
-        (enclosing / "Cargo.toml").write_text('[workspace.dependencies]\nqleisli="=0.3.0-beta"\n')
+        (enclosing / "Cargo.toml").write_text('[workspace.dependencies]\nqleisli="=0.3.0"\n')
         nested = enclosing / "nested"
         nested.mkdir()
         missing = nested / "Cargo.toml"
@@ -105,10 +105,10 @@ class DependencyAssociationTests(unittest.TestCase):
                 dependency_root(changed, self.manifest)
 
     def test_no_local_dependency_declaration_or_missing_link_is_filled_in(self):
-        self.manifest.write_text('[dependencies.qleisli]\nversion="=0.3.0-beta"\npath="../other"\n')
+        self.manifest.write_text('[dependencies.qleisli]\nversion="=0.3.0"\npath="../other"\n')
         with self.assertRaisesRegex(RuntimeError, "Unsupported"):
             dependency_root(self.metadata, self.manifest)
-        self.manifest.write_text('[dependencies]\nqleisli="=0.3.0-beta"\n')
+        self.manifest.write_text('[dependencies]\nqleisli="=0.3.0"\n')
         changed = copy.deepcopy(self.metadata)
         changed["resolve"]["nodes"][0]["deps"] = []
         with self.assertRaisesRegex(RuntimeError, "Missing or duplicate"):
@@ -146,7 +146,7 @@ class DependencyAssociationTests(unittest.TestCase):
         other_manifest.parent.mkdir()
         other_manifest.write_bytes(self.manifest.read_bytes())
         checksum = "a" * 64
-        lock = ('version=4\n[[package]]\nname="qleisli"\nversion="0.3.0-beta"\n'
+        lock = ('version=4\n[[package]]\nname="qleisli"\nversion="0.3.0"\n'
                 'source="registry+https://github.com/rust-lang/crates.io-index"\nchecksum="' + checksum + '"\n')
         (self.manifest.parent / "Cargo.lock").write_text(lock)
         (other_manifest.parent / "Cargo.lock").write_text(lock)

@@ -1096,19 +1096,6 @@ impl FrozenSources {
         self.stage_configuration(Some(configuration))
     }
 
-    /// The beta library still reads Qargo.toml; this derived view is never a raw input.
-    pub fn stage_for_beta(&self, configuration: &Files) -> Result<SourceStage, Diagnostic> {
-        validate_source_configuration(self, configuration)?;
-        let legacy = configuration
-            .iter()
-            .map(|(label, bytes)| {
-                let path = Path::new(label).with_file_name(crate::support::manifest::LEGACY);
-                (path.to_str().unwrap().to_owned(), bytes.clone())
-            })
-            .collect();
-        self.stage_configuration(Some(&legacy))
-    }
-
     fn stage_configuration(
         &self,
         configuration: Option<&Files>,

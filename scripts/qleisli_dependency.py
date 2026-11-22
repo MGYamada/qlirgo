@@ -9,7 +9,7 @@ import re
 import stat
 import tomllib
 
-EXPECTED = "0.3.0-beta"
+EXPECTED = "0.3.0"
 REGISTRY = "registry+https://github.com/rust-lang/crates.io-index"
 
 
@@ -64,7 +64,7 @@ def dependency_root(metadata, manifest_path, required_source=None):
     text.encode("utf-8")
     require("\n" not in text and "\r" not in text, "Source directory cannot be exported as one CI environment value")
     # Source availability only; the caller still builds/audits the official kernel.
-    for label in ("stdlib/Qargo.toml", "src/frontend/source.rs", "lean-kernel/Main.lean", "lean-kernel/Audit.lean",
+    for label in ("stdlib/Qlirgo.toml", "src/frontend/source.rs", "lean-kernel/Main.lean", "lean-kernel/Audit.lean",
                   "scripts/package_lean_kernel.py", "scripts/check_lean_kernel.py", "scripts/native_packet.py",
                   "tests/fixtures/verification_v022/finite/t.v2.qirf", "LICENSE", "NOTICE"):
         path = source / label

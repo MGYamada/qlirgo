@@ -139,7 +139,7 @@ fn check_selected(
     let configuration_id = configuration_id(configuration);
     if sources.count() == 0 {
         if !configuration.is_empty() {
-            let stage = sources.stage_for_beta(configuration)?;
+            let stage = sources.stage_with_configuration(configuration)?;
             Project::load_with_policy(stage.root(), SourcePolicy::default())
                 .map_err(|diagnostic| compiler_diagnostic(diagnostic, stage.root()))?;
         }
@@ -152,7 +152,7 @@ fn check_selected(
             _stage: None,
         });
     }
-    let stage = sources.stage_for_beta(configuration)?;
+    let stage = sources.stage_with_configuration(configuration)?;
     // Capture one project and its edition before native selection.
     // Checking and metadata use these retained source and manifest bytes.
     let project = Project::load_with_policy(stage.root(), SourcePolicy::default())
@@ -287,7 +287,7 @@ fn compiler_diagnostic(
         // Some load diagnostics carry their filesystem path in prose. Remove
         // the private snapshot prefix without altering coordinates or categories.
         message: if manifest_diagnostic {
-            redact_stage_path(&source.message, stage).replace("Qargo.toml", "Qlirgo.toml")
+            redact_stage_path(&source.message, stage)
         } else {
             redact_stage_path(&source.message, stage)
         },

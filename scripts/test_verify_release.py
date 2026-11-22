@@ -19,12 +19,12 @@ class ReleaseMetadataTests(unittest.TestCase):
         self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name)
         for label, content in {
-            "Cargo.toml": '[package]\nname="qleisli"\nversion="0.3.0-beta"\n',
-            "stdlib/Qargo.toml": 'schema-version=2\n[qrate]\nname="std"\nversion="0.3.0-beta"\nedition="2026"\n',
+            "Cargo.toml": '[package]\nname="qleisli"\nversion="0.3.0"\n',
+            "stdlib/Qlirgo.toml": 'schema-version=2\n[qrate]\nname="std"\nversion="0.3.0"\nedition="2026"\n',
             "stdlib/src/a.qli": "unitary fn a(q:Q<Bit>)->Q<Bit>{q}\n",
             "stdlib/src/b.qli": "unitary fn b(q:Q<Bit>)->Q<Bit>{h(q)}\n",
             "src/frontend/source.rs": '''impl BundledRegistry {
-    pub fn manifest() -> &'static str { include_str!("../../stdlib/Qargo.toml") }
+    pub fn manifest() -> &'static str { include_str!("../../stdlib/Qlirgo.toml") }
     pub fn sources() -> &'static [BundledSource] {
         static SOURCES: &[BundledSource] = &[
             BundledSource {
@@ -64,7 +64,7 @@ class ReleaseMetadataTests(unittest.TestCase):
     def test_complete_independent_inventory_uses_sorted_canonical_names_and_raw_bytes(self):
         self.assertEqual([row["name"] for row in self.std["std"]["modules"]], ["std::a", "std::b"])
         original = self.std["std"]["content_id"]
-        for label in ("stdlib/Qargo.toml", "stdlib/src/a.qli"):
+        for label in ("stdlib/Qlirgo.toml", "stdlib/src/a.qli"):
             with self.subTest(label=label):
                 path = self.root / label
                 old = path.read_bytes()
@@ -104,11 +104,11 @@ class ReleaseMetadataTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "Nonregular"):
             verifier.expected_std(self.root)
 
-    def test_full_prerelease_pair_and_explicit_edition_are_not_inferred(self):
-        path = self.root / "stdlib/Qargo.toml"
+    def test_full_release_pair_and_explicit_edition_are_not_inferred(self):
+        path = self.root / "stdlib/Qlirgo.toml"
         original = path.read_text()
-        for old, new in [('version="0.3.0-beta"', 'version="0.3.0"'),
-                         ('version="0.3.0-beta"', 'version="0.3.0-beta+other"'),
+        for old, new in [('version="0.3.0"', 'version="0.3.0-beta"'),
+                         ('version="0.3.0"', 'version="0.3.0-beta+other"'),
                          ('edition="2026"', 'edition="2027"'),
                          ('edition="2026"', ''), ('name="std"', 'name="other"')]:
             with self.subTest(new=new):

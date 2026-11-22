@@ -371,7 +371,7 @@ fn empty_roots_and_json_metadata_do_not_claim_a_check() {
                 serde_json::json!({"status":"not_run", "reason":"no_sources"})
             );
             assert_eq!(result["tool"]["version"], env!("CARGO_PKG_VERSION"));
-            assert_eq!(result["tool"]["qleisli_version"], "0.3.0-beta");
+            assert_eq!(result["tool"]["qleisli_version"], "0.3.0");
         }
     }
 }

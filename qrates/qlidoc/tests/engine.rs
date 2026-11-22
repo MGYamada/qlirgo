@@ -508,7 +508,7 @@ fn cli_is_one_json_envelope_with_portable_relative_paths_and_usage_exit_codes() 
     assert!(version.status.success());
     let version: Value = serde_json::from_slice(&version.stdout).unwrap();
     assert_eq!(version["result"]["version"], env!("CARGO_PKG_VERSION"));
-    assert_eq!(version["result"]["qleisli_version"], "0.3.0-beta");
+    assert_eq!(version["result"]["qleisli_version"], "0.3.0");
     for args in [
         vec!["--format=json"],
         vec!["", "--format=json"],

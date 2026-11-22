@@ -1,28 +1,28 @@
 # Release checklist
 
-## Selected beta and formal releases
+## Selected formal release
 
-Prepare qlirgo 0.2.0-beta first, followed by 0.2.0 only after the approved exact
-Qleisli 0.3.0 stable migration and complete revalidation. Follow-up betas use
-0.2.0-beta.1, beta.2, and so on; published versions/tags/assets are immutable.
+Qlirgo 0.2.0 targets the exact Qleisli 0.3.0 release. The compiler, native
+checker and bundled std are one Qleisli release. The four qlirgo executables
+are one separately versioned bundle. Before Qleisli is published, qualify the
+pinned pair using Qleisli's checked candidate crate and an isolated Cargo
+source override. The candidate override and temporary locks do not qualify
+a registry package.
 
-Root Cargo [package].version is the release authority. The root package
-and three independent private Rust engines use the complete version 0.2.0-beta.
-Each engine compiles the neutral support modules from its own source inventory. The three bundled qrates keep literal base version
-0.2.0 by the selected bundle policy. Schema-2 qrate manifests also support
-prerelease versions for independently versioned qrates; this does not implicitly
-change bundled declarations. scripts/release_version.py
-validates stable, -beta and -beta.N spellings (canonical decimal N >= 1) and
-derives only the bundled-qrate base. Runtime tool compatibility always compares
-the full prerelease identity, never the base. No edition is inferred.
+After publication, pin the verified registry crate in the root and three
+independent Cargo locks. Check its checksum against the upstream released
+crate and verify the native checker on each host. Complete the existing
+bundle, extraction, package, dry-run and installation checks before
+publishing qlirgo 0.2.0. Retain the same verified commit for the crate, tag
+and all five GitHub release assets. The published 0.2.0-beta uses
+`=0.3.0-beta` and remains available under its explicit version.
 
-The fixed beta dependency stays exactly Qleisli =0.3.0-beta. Its registry version
-is a prerequisite for release. Path-substituted development locks/checks cannot
-satisfy registry/source/package/native release verification. Do not replace it
-with alpha, another version, a local/Git fallback or an unverified package.
-Rust edition 2024, MSRV 1.85 and unsafe prohibition remain required.
+Root Cargo `[package].version` is the qlirgo release authority. The independent
+Rust engines declare the same full product version. The bundled qrates use
+the canonical base version. Edition selection, qrate schema and result
+protocol versions have their own contracts.
 
-## Beta publication gates
+## Historical beta publication gates
 
 1. Start from the merged beta implementation, review the version, lockfiles,
    release notes and open issues, and record the exact candidate commit. Track

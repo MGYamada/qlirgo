@@ -75,7 +75,7 @@ def verify_package(source_root, archive_path, bin_dir, qleisli_source_root=None)
                 "Dependency is not available from a registry")
         compiler = [dependency for dependency in package["dependencies"]
                     if dependency["name"] == "qleisli"]
-        require(len(compiler) == 1 and compiler[0]["req"] == "=0.3.0-beta", "Incorrect Qleisli requirement")
+        require(len(compiler) == 1 and compiler[0]["req"] == "=0.3.0", "Incorrect Qleisli requirement")
         require(set(files_under(bin_dir.resolve())) == set(TOOLS), "Incorrect installed executable set")
 
     verify(source_root, bin_dir, qleisli_source_root)
