@@ -12,12 +12,12 @@ Local Qleisli qrate management with qlinties, qlifmt, and qlidoc. The four Rust 
 
 Since version 0.1.7, the tools have independent Rust environments and extraction verification; see the [development instructions](docs/qrate-development.md) and [extraction contract](docs/qrate-extraction-plan.md).
 
-**Stable candidate:** qlirgo 0.2.0 targets the exact Qleisli 0.3.0 release. The published beta remains available under its explicit version.
+**qlirgo 0.2.0** is available on [crates.io](https://crates.io/crates/qlirgo/0.2.0) and [GitHub Releases](https://github.com/MGYamada/qlirgo/releases/tag/v0.2.0). It links exactly Qleisli 0.3.0. The published beta remains available under its explicit version.
 The existing crates.io qlirgo 0.1.0 is a namespace reservation. Published qargo
 0.2.0 and 0.2.0-final are terminal migration notices; they do not run qrate commands.
 The previous functional qargo 0.1.9 and its Qleisli 0.2.1 artifacts remain unchanged.
 
-This development version pins Qleisli `=0.3.0`, retains parent result/build-record
+Qlirgo 0.2.0 pins Qleisli `=0.3.0`, retains parent result/build-record
 schema 2 and child schema 1, and requires explicit Qleisli edition `"2026"`.
 The root and component lockfiles select the published Qleisli 0.3.0 crate.
 Package, installer and supported-host verification are recorded separately.
@@ -39,7 +39,7 @@ new platform support requires fresh validation.
 
 **Qlirgo manages Qleisli packages. Cargo builds, packages, and installs the Rust implementation outside qlirgo operations.** Qlirgo commands never invoke Cargo. They do not translate mathematical tests into Rust tests or Qleisli documentation into Rustdoc.
 
-Each standard qrate ([qlinties](qrates/qlinties/Qlirgo.toml), [qlifmt](qrates/qlifmt/Qlirgo.toml), and [qlidoc](qrates/qlidoc/Qlirgo.toml)) contains its complete Rust engine, CLI, tests, and a short `src/smoke.qli` identity operation, with no `.qlt` files. Each engine builds and runs independently using the neutral Rust sources in `tool-support/`. Qlirgo snapshots and identifies both `.rs` and `.qli` inputs, checks the `.qli` source, and leaves Rust compilation to developer Cargo configuration outside the qrates. Each engine also accepts external Qleisli sources. The candidate `qlirgo` crate compiles these same engine sources as internal modules; the three private packages each have an independent Cargo workspace for development.
+Each standard qrate ([qlinties](qrates/qlinties/Qlirgo.toml), [qlifmt](qrates/qlifmt/Qlirgo.toml), and [qlidoc](qrates/qlidoc/Qlirgo.toml)) contains its complete Rust engine, CLI, tests, and a short `src/smoke.qli` identity operation, with no `.qlt` files. Each engine builds and runs independently using the neutral Rust sources in `tool-support/`. Qlirgo snapshots and identifies both `.rs` and `.qli` inputs, checks the `.qli` source, and leaves Rust compilation to developer Cargo configuration outside the qrates. Each engine also accepts external Qleisli sources. The `qlirgo` crate compiles these same engine sources as internal modules; the three private packages each have an independent Cargo workspace for development.
 
 A qrate's semantic surface is its Qleisli modules and contracts; its raw input identity also tracks host implementation inputs for provenance. Checking a bundled smoke sample does not certify the Rust engine. The development target links Qleisli `=0.3.0` and its actual embedded std descriptor. Nonempty checking selects one native kernel through Qleisli's existing explicit selection contract, including `QLEISLI_KERNEL`; a PATH `qleisli` does not select the linked frontend. Observed native paths and `finite-v0` are diagnostic/adapter metadata, not binary attestation or source-preservation proof. The [toolchain design](docs/toolchains.md) distinguishes future acceptance selection.
 
@@ -189,7 +189,7 @@ All four tools support `--help`, `--version`, and `--format=json`. The developme
 
 ## 0.1.x support and compatibility
 
-Published qargo 0.1.9 was validated on Linux x86_64 and macOS with Rust 1.85 and stable. Its supported targets exclude Linux ARM64, Windows and Android. The qlirgo 0.2.0 candidate requires fresh source, package and native distribution validation against its linked Qleisli release. All Rust packages retain the unsafe-code prohibition.
+Published qargo 0.1.9 was validated on Linux x86_64 and macOS with Rust 1.85 and stable. Its supported targets exclude Linux ARM64, Windows and Android. The [qlirgo 0.2.0 release](https://github.com/MGYamada/qlirgo/releases/tag/v0.2.0) records source, package and native distribution validation against Qleisli 0.3.0. The [published installation workflow](https://github.com/MGYamada/qlirgo/actions/runs/45097307311) checked all three supported native hosts. All Rust packages retain the unsafe-code prohibition.
 
 The public contract covers CLI commands, manifest schema 2, the independently versioned JSON result formats, and exit codes 0/1/2. Path options accept both equality and space-separated syntax, such as `--manifest-path=PATH` and `--manifest-path PATH`, including explicit tool paths and qlidoc's `--output`. Empty, missing, and repeated values are usage errors. Incompatible manifest or result changes require a new schema version independently of the product version. Diagnostic prose and internal Rust library APIs are not stable interfaces. Build records and lint results are metadata, not mathematical evidence; the ordinary Qleisli trust boundary is preserved.
 

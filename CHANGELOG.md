@@ -1,6 +1,6 @@
 # Changelog
 
-## qlirgo 0.2.0
+## qlirgo 0.2.0 — 2026-11-23
 
 - Pin the root and independent tool workspaces to the published Qleisli 0.3.0 crate. The four 0.2.0 executables use the matching native checker and bundled std.
 - Pass captured `Qlirgo.toml` configuration directly to Qleisli. Continue accepting `Qargo.toml` and require byte-identical copies when both files are present.
