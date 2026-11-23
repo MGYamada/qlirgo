@@ -185,12 +185,15 @@ main() {
     mkdir "$work/unpacked"
     tar -xzf "$work/$archive" --no-same-owner -C "$work/unpacked" || fail "Cannot extract archive."
     unpacked=$work/unpacked/$bundle
-    # This new-name candidate requires the exact beta pairing. Its preparation
-    # does not change published legacy bundles or authorize a release.
+    # The stable release and its beta use different native checker protocols.
+    case "$version" in
+        0.2.0) qleisli_version=0.3.0 ;;
+        *) qleisli_version=0.3.0-beta ;;
+    esac
     for tool in qlirgo qlinties qlifmt qlidoc; do
         [ -f "$unpacked/bin/$tool" ] && [ ! -L "$unpacked/bin/$tool" ] && [ -x "$unpacked/bin/$tool" ] || fail "Invalid executable: $tool"
         actual_version=$("$unpacked/bin/$tool" --version) || fail "Cannot execute $tool on this system."
-        [ "$actual_version" = "$tool $version (Qleisli 0.3.0-beta, finite-v0)" ] || fail "Incorrect executable version: $tool"
+        [ "$actual_version" = "$tool $version (Qleisli $qleisli_version, finite-v0)" ] || fail "Incorrect executable version: $tool"
     done
 
     mkdir -p "$prefix"

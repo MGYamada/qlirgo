@@ -6,7 +6,7 @@ on:
       version:
         description: Published version to verify
         required: true
-        default: "0.2.0-beta"
+        default: "0.2.0"
         type: string
 
 permissions:
@@ -55,8 +55,8 @@ jobs:
           cargo +1.85.0 metadata --frozen --format-version=1 > "$RUNNER_TEMP/published-dependencies.json"
           qleisli_source_root="$(python3 scripts/qleisli_dependency.py --metadata="$RUNNER_TEMP/published-dependencies.json" --manifest-path=Cargo.toml)"
           printf 'QLEISLI_SOURCE_ROOT=%s\n' "$qleisli_source_root" >> "$GITHUB_ENV"
-      - name: Prepare the linked Qleisli beta kernel
-        uses: ./.release-verifier/.github/actions/beta-kernel
+      - name: Prepare the linked Qleisli kernel
+        uses: ./.github/actions/beta-kernel
       - name: Download and validate the complete published asset set
         shell: bash
         run: |

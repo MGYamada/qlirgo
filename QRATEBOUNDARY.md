@@ -102,7 +102,7 @@ owns its reserved namespace, distribution, and semantic integration. Neither the
 three standard tools nor any other internal or external qrate acquires this
 status by being bundled or adopting a similar name.
 
-The development migration targets the stdlib embedded in exact Qleisli `=0.3.0-beta`. Its private descriptor supplies the actual full version, manifest and sole canonical source inventory after the existing embedded-manifest gate. Qlirgo records those bytes separately from local source identity and observed native paths. std's reserved namespace/distribution role grants no semantic exception: its bodies undergo ordinary independent checking. Metadata grants no Rust-code checking or mathematical evidence. Published qargo 0.1.9 and its immutable artifacts retain exact Qleisli 0.2.1. See the [linked migration](docs/linked-qleisli-030.md); no independently resolved std package or version selector is added.
+The qlirgo 0.2.0 candidate uses the stdlib embedded in exact Qleisli `=0.3.0`. Its private descriptor supplies the actual full version, manifest and sole canonical source inventory after the existing embedded-manifest gate. Qlirgo records those bytes separately from local source identity and observed native paths. std's reserved namespace/distribution role grants no semantic exception: its bodies undergo ordinary independent checking. Metadata grants no Rust-code checking or mathematical evidence. Published qargo 0.1.9 and its immutable artifacts retain exact Qleisli 0.2.1. See the [linked migration](docs/linked-qleisli-030.md); no independently resolved std package or version selector is added.
 
 ## Implementation boundary
 

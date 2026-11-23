@@ -139,7 +139,7 @@ fn check_selected(
     let configuration_id = configuration_id(configuration);
     if sources.count() == 0 {
         if !configuration.is_empty() {
-            let stage = sources.stage_for_beta(configuration)?;
+            let stage = sources.stage_with_configuration(configuration)?;
             Project::load_with_policy(stage.root(), SourcePolicy::default())
                 .map_err(|diagnostic| compiler_diagnostic(diagnostic, stage.root()))?;
         }
@@ -152,7 +152,7 @@ fn check_selected(
             _stage: None,
         });
     }
-    let stage = sources.stage_for_beta(configuration)?;
+    let stage = sources.stage_with_configuration(configuration)?;
     // Capture one project and its edition before native selection.
     // Checking and metadata use these retained source and manifest bytes.
     let project = Project::load_with_policy(stage.root(), SourcePolicy::default())
@@ -254,12 +254,6 @@ fn compiler_diagnostic(
     let Some(stage) = root.to_str() else {
         return Diagnostic::error("input", "tool", "The source snapshot path is not UTF-8.");
     };
-    let manifest_diagnostic = source.primary.as_ref().is_some_and(|location| {
-        location
-            .path
-            .strip_prefix(root)
-            .is_ok_and(crate::support::manifest::is_manifest)
-    });
     let primary = source.primary.and_then(|location| {
         let path = if let Ok(relative) = location.path.strip_prefix(root) {
             if crate::support::manifest::is_manifest(relative) {
@@ -286,11 +280,7 @@ fn compiler_diagnostic(
         primary,
         // Some load diagnostics carry their filesystem path in prose. Remove
         // the private snapshot prefix without altering coordinates or categories.
-        message: if manifest_diagnostic {
-            redact_stage_path(&source.message, stage).replace("Qargo.toml", "Qlirgo.toml")
-        } else {
-            redact_stage_path(&source.message, stage)
-        },
+        message: redact_stage_path(&source.message, stage),
         suggestion: None,
     }
 }

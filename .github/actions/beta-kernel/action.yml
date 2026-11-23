@@ -1,10 +1,9 @@
-name: Prepare the exact Qleisli beta kernel
+name: Prepare the exact Qleisli stable kernel
 description: Verify the published host bundle or build the Intel Mac kernel from the linked crate
 runs:
   using: composite
   steps:
-    - name: Select the published native bundle for this host
-      if: runner.os != 'macOS' || runner.arch != 'X64'
+    - name: Bind the published Qleisli crate, tag and checker
       shell: bash
       env:
         GH_TOKEN: ${{ github.token }}
@@ -12,11 +11,21 @@ runs:
         case "$(uname -s)-$(uname -m)" in
           Linux-x86_64) target=x86_64-unknown-linux-gnu ;;
           Darwin-arm64) target=aarch64-apple-darwin ;;
-          *) echo 'No published Qleisli beta kernel for this host' >&2; exit 1 ;;
+          Darwin-x86_64) target=source ;;
+          *) echo 'No supported Qleisli kernel for this host' >&2; exit 1 ;;
         esac
-        archive="qleisli-kernel-0.3.0-beta-$target.tar.gz"
-        gh release download v0.3.0-beta -R MGYamada/Qleisli -p "$archive" -D "$RUNNER_TEMP"
-        python3 "$GITHUB_ACTION_PATH/verify.py" "$QLEISLI_SOURCE_ROOT" "$RUNNER_TEMP/$archive" "$RUNNER_TEMP/beta-kernel"
+        upstream="$RUNNER_TEMP/qleisli-stable-release"
+        mkdir "$upstream"
+        gh release view v0.3.0 -R MGYamada/Qleisli --json isDraft,isPrerelease,tagName \
+          | jq -e '.tagName == "v0.3.0" and (.isDraft or .isPrerelease | not)'
+        commit=$(gh api repos/MGYamada/Qleisli/commits/v0.3.0 --jq .sha)
+        assets=(-p qleisli-0.3.0.crate)
+        if [[ "$target" != source ]]; then
+          assets+=(-p SHA256SUMS -p "qleisli-kernel-0.3.0-$target.tar.gz")
+        fi
+        gh release download v0.3.0 -R MGYamada/Qleisli "${assets[@]}" -D "$upstream"
+        python3 "$GITHUB_ACTION_PATH/verify.py" "$QLEISLI_SOURCE_ROOT" "$upstream" \
+          Cargo.lock "$RUNNER_TEMP/beta-kernel" "$commit" "$target"
     - name: Copy Intel Mac toolchain configuration outside the bound sources
       if: runner.os == 'macOS' && runner.arch == 'X64'
       shell: bash

@@ -56,6 +56,7 @@ fn qrate_files(name: &str) -> Files {
 
 #[test]
 fn all_four_executables_bind_version_to_the_actual_engine() {
+    let linked_std = qleisli::frontend::project::bundled_std().unwrap();
     for (name, binary) in TOOLS {
         let (output, report) = run(binary, &["--version"]);
         assert!(output.status.success(), "{name}: {report}");
@@ -67,7 +68,7 @@ fn all_four_executables_bind_version_to_the_actual_engine() {
         let tool = report["result"].get("tool").unwrap_or(&report["result"]);
         assert_eq!(tool["name"], name);
         assert_eq!(tool["version"], env!("CARGO_PKG_VERSION"));
-        assert_eq!(tool["qleisli_version"], "0.3.0-beta");
+        assert_eq!(tool["qleisli_version"], linked_std.product_version());
         assert_eq!(tool["profile"], "finite-v0");
         assert_eq!(
             tool["executable_sha256"],

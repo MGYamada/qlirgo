@@ -1,6 +1,6 @@
 # qlidoc
 
-qlidoc 0.2.0-beta generates descriptive Markdown from Qleisli source syntax. It is
+qlidoc 0.2.0 generates descriptive Markdown from Qleisli source syntax. It is
 one of the three standard qlirgo qrates, alongside qlinties and qlifmt. Its Rust
 engine, CLI and Rust tests are qrate inputs; Cargo configuration remains
 outside this qrate. Qlirgo never runs Cargo or Rustdoc.

@@ -13,7 +13,7 @@ import tarfile
 import tempfile
 import unittest
 
-from verify_release import PRODUCT_VERSION, QRATE_VERSION, TOOLS
+from verify_release import PRODUCT_VERSION, QLEISLI_VERSION, QRATE_VERSION, TOOLS
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -112,7 +112,9 @@ exec {real_mv} "$@"
 
     def release(self, version=QRATE_VERSION, target=None, *, extra=None, link=None,
                 duplicate=False, wrong_version=False, nonexecutable=False, absolute=False,
-                unsafe_mode=False, qleisli_version="0.3.0-beta"):
+                unsafe_mode=False, qleisli_version=None):
+        if qleisli_version is None:
+            qleisli_version = QLEISLI_VERSION if version == PRODUCT_VERSION else "0.3.0-beta"
         target = target or host_target()
         name = f"qlirgo-{version}-{target}"
         directory = self.downloads / ("v" + version)
@@ -226,11 +228,12 @@ class InstallerTests(unittest.TestCase):
         self.success(self.fixture.run("--version", "0.1.4"))
         self.assertEqual(self.fixture.current(), old)
 
-    def test_legacy_checker_cannot_masquerade_as_the_new_beta_pair(self):
-        # Synthetic transport fixture only: no beta registry/install claim.
-        for version in (PRODUCT_VERSION, "0.3.0"):
-            with self.subTest(version=version), InstallerFixture() as fixture:
-                fixture.release(version, qleisli_version="0.2.1")
+    def test_rejects_incorrect_qleisli_version(self):
+        cases = [(PRODUCT_VERSION, "0.2.1"), ("0.3.0", "0.2.1"),
+                 (PRODUCT_VERSION, "0.3.0-beta"), (QRATE_VERSION + "-beta", QLEISLI_VERSION)]
+        for version, qleisli_version in cases:
+            with self.subTest(version=version, qleisli_version=qleisli_version), InstallerFixture() as fixture:
+                fixture.release(version, qleisli_version=qleisli_version)
                 result = fixture.run("--version", version)
                 self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
                 self.assertIn("Incorrect executable version: qlirgo", result.stderr)

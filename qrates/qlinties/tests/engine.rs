@@ -180,7 +180,7 @@ fn unused_imports_are_advisory_and_used_calls_are_retained() {
     let result = report.envelope.result.as_ref().unwrap();
     assert_eq!(result["qleisli_check"]["status"], "passed");
     assert_eq!(result["source_count"], 1);
-    assert_eq!(result["tool"]["qleisli_version"], "0.3.0-beta");
+    assert_eq!(result["tool"]["qleisli_version"], "0.3.0");
     assert_eq!(result["tool"]["profile"], "finite-v0");
 }
 
@@ -358,7 +358,7 @@ fn compiler_failures_prevent_all_advisory_lints() {
         assert_eq!(result["qleisli_check"]["status"], "failed");
         assert_eq!(result["source_count"], 1);
         assert!(result["source_id"].as_str().unwrap().starts_with("sha256:"));
-        assert_eq!(result["tool"]["qleisli_version"], "0.3.0-beta");
+        assert_eq!(result["tool"]["qleisli_version"], "0.3.0");
         assert_eq!(report.envelope.diagnostics.len(), 1);
         let diagnostic = &report.envelope.diagnostics[0];
         assert_eq!(diagnostic.category, "compiler", "{id}: {diagnostic:?}");
